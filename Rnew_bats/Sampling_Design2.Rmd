@@ -1,0 +1,1829 @@
+---
+output:
+  pdf_document: default
+  html_document:
+    keep_md: yes
+  word_document: default
+---
+
+#Bat survey in Plumas National Forest through the use of acoustic bat detectors
+###author: Derek Corcoran
+####Last update: `r Sys.Date() `
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=FALSE)
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE,results='hide'}
+library("raster", lib.loc="~/R/win-library/3.2")
+library("rasterVis", lib.loc="~/R/win-library/3.2")
+library("maps", lib.loc="~/R/win-library/3.2")
+library("maptools", lib.loc="~/R/win-library/3.2")
+library("rgdal", lib.loc="~/R/win-library/3.2")
+library("latticeExtra", lib.loc="~/R/win-library/3.2")
+library("dplyr", lib.loc="~/R/win-library/3.2")
+library("knitr", lib.loc="~/R/win-library/3.2")
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide', cache=TRUE}
+PNF<- readGDAL("C:/Users/usuario/Bats_California/layers/PNF.asc")
+PNF<-raster (PNF)
+bc <- readGDAL("C:/Users/usuario/Bats_California/layers/burn_canopy.asc")
+bc<-raster (bc)
+bb <- readGDAL("C:/Users/usuario/Bats_California/layers/burn_basal.asc")
+bb<-raster (bb)
+bs <- readGDAL("C:/Users/usuario/Bats_California/layers/burn_severity.asc")
+bs<-raster (bs)
+topo <- readGDAL("C:/Users/usuario/Bats_California/layers/plumastopo.asc")
+topo<-raster (topo)
+Vegetation_existing <- readGDAL("C:/Users/usuario/Bats_California/layers/VegTypeAll.asc")
+Vegetation_existing<-raster (Vegetation_existing)
+FireReturnAll <- readGDAL("C:/Users/usuario/Bats_California/layers/FireReturnAll.asc")
+FireReturnAll<-raster (FireReturnAll)
+TreatmentsStorrie <- readGDAL("C:/Users/usuario/Bats_California/layers/TreatmentsStorrie.asc")
+TreatmentsStorrie<-raster (TreatmentsStorrie)
+FireHistory <- readGDAL("C:/Users/usuario/Bats_California/layers/FireHistory.asc")
+FireHistory<-raster (FireHistory)
+Goshawkforag <- readGDAL("C:/Users/usuario/Bats_California/layers/Goshawkforag.asc")
+Goshawkforag<-raster (Goshawkforag)
+GoshawkNEST <- readGDAL("C:/Users/usuario/Bats_California/layers/GoshawkNEST.asc")
+GoshawkNEST<-raster (GoshawkNEST)
+MartenHabit <- readGDAL("C:/Users/usuario/Bats_California/layers/MartenHabit.asc")
+MartenHabit<-raster (MartenHabit)
+SeralStage <-readGDAL("C:/Users/usuario/Bats_California/layers/SeralStage.asc")
+SeralStage<-raster (SeralStage)
+mapita<- readGDAL("C:/Users/usuario/Bats_California/layers/pnf_12.jpg")
+mapa2<-raster(mapita)
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE}
+df.bb <- data.frame(id=c(NA,1,2,3,4,5,6,7,255), v=c(0,1,2,3,4,5,6,7,8))#Change outlayers and extract NAs 
+
+bb1 <- subs(bb, df.bb,subswithNA=FALSE)
+df.bs <- data.frame(id=c(NA,1,2,3,4,255), v=c(0,1,2,3,4,5))
+bs1 <- subs(bs, df.bs,subswithNA=FALSE)
+df.bc <- data.frame(id=c(NA,1,2,3,4,5,255), v=c(0,1,2,3,4,5,6))
+bc1 <- subs(bc, df.bc,subswithNA=FALSE)
+lidar.limit <- readOGR(dsn="C:/Users/usuario/Bats_California/layers",layer="LiDAR_Boundary")
+lidar.limit <- spTransform(lidar.limit, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+```
+```{r, echo=FALSE, results='hide', message=FALSE}
+bb<-projectRaster(bb1, PNF)
+bs<-projectRaster(bs1, PNF)
+bc<-projectRaster(bc1, PNF)
+Vegetation_existing<-projectRaster(Vegetation_existing, PNF)
+FireReturnAll<-projectRaster(FireReturnAll, PNF)
+TreatmentsStorrie<-projectRaster(TreatmentsStorrie, PNF)
+FireHistory <-projectRaster(FireHistory, PNF)
+Goshawkforag <-projectRaster(Goshawkforag,PNF)
+GoshawkNEST<- projectRaster(GoshawkNEST, PNF)
+MartenHabit<- projectRaster(MartenHabit, PNF)
+SeralStage<- projectRaster(SeralStage,PNF)
+mapa2<-projectRaster(mapa2,PNF)
+```
+```{r, echo=FALSE, results='hide', message=FALSE}
+bc<-resample(bc, PNF)
+bb<-resample(bb, PNF)
+bs<-resample(bs, PNF)
+Vegetation_existing<-resample(Vegetation_existing, PNF, method="ngb")
+FireReturnAll<-resample(FireReturnAll, PNF)
+TreatmentsStorrie<-resample(TreatmentsStorrie, PNF)
+FireHistory<-resample(FireHistory, PNF)
+topo<-resample(topo,PNF)
+Goshawkforag<-resample(Goshawkforag,PNF, method="ngb")
+GoshawkNEST <- resample(GoshawkNEST, PNF, method="ngb")
+TreatmentsStorrie[is.na(TreatmentsStorrie)] <- 0
+MartenHabit <- resample (MartenHabit, PNF, method="ngb")
+SeralStage <- resample (SeralStage, PNF, method="ngb")
+```
+
+```{r, echo=FALSE, results='hide',warning=FALSE}
+ratify(Vegetation_existing, count=TRUE)
+```
+
+
+```{r,echo=FALSE,warning=FALSE}
+FireReturnAll[FireReturnAll < 0] <- NA
+```
+#Introduction
+
+To study bat occupancy in the Plumas National Forest by surveying acoustically different areas of the forest, the three objective species for this survey are the Pallid Bat, the Townsend’s Long-eared Bat, and the Fringed Bat. Nevertheless, there is at least 14 species that form the bat ensemble in the National Forest, the list of species is the following:
+
+- *Tadarida brasiliensis* – free-tailed Bat
+- *Antrozous pallidus* - **Pallid Bat**
+- *Eptesicus fuscus* - Big Brown Bat
+- *Euderma maculatum* - Spotted Bat
+- *Lasionycteris noctivagans* - Silvered-haired Bat
+- *Lasiurus blossevillii* - Western Red Bat
+- *Lasiurus cinereus* - Hoary Bat
+- *Corynorhinus townsendii* - **Townsend's Long-eared Bat**
+- *Myotis californicus* - California Bat
+- *Myotis evotis* - Long-eared Bat
+- *Myotis lucifugus* - Little Brown Bat
+- *Myotis thysanodes* - **Fringed Bat**
+- *Myotis volans* - Hairy-winged bat
+- *Myotis yumanensis* - Yuma myotis
+
+##Objective of the study
+
+To determine the factors that influence bat occupancy in heterogeneous environments of Plumas National Forest, including areas corresponding to the Moonlight Fire and the Storrie Fire. Comparing and complementing with biotic and abiotic variables and treatments made by the National Forest Service.
+
+```{r, echo=FALSE, results='hide', warning=FALSE}
+roads.v <- readOGR(dsn="C:/Users/usuario/Bats_California/layers",layer="Roads")
+roads.v <- spTransform(roads.v, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+template <- PNF  # this will be the template
+template[] <- NA  # assigns all values as NA
+roads.r <- rasterize(roads.v, template, field=1)
+```
+
+```{r,echo=FALSE, results='hide'}
+roaddist.r <- distance(roads.r)
+roaddist.r<- roaddist.r*PNF
+
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,results='hide'}
+rivers <- readOGR(dsn="C:/Users/usuario/Bats_California/layers",layer="NHDFlowline")
+rivers <- spTransform(rivers, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+template2 <- PNF  # this will be the template
+template2[] <- NA  # assigns all values as NA
+rivers.r <- rasterize(rivers, template2, field=1)
+riverdist.r <- distance(rivers.r)
+riverdist.r<- riverdist.r*PNF
+
+```
+
+# Specific research questions and the factors that might influence them
+
+##1. Which factors affect bat occupancy in burned forest?
+        
+###Does bat occupancy differ with the duration of time since the fire?
+
+-	Explanatory variable = burn age at sampling sites (mean number of years between fires for a given point and the time till the last fire for a given point).
+
+```{r,echo=FALSE}
+burn.age<- stack(FireReturnAll, FireHistory)
+names(burn.age)<- c("Fire Interval", "Fire History")
+```
+
+###Does bat occupancy differ with burn intensity
+
+- Explanatory variable = burn intensity (in the following figure we see the layers that will allow us to work with burn intensity, this layers are burn intensity of the soil, burn intensity of the canopy, and Burn intensity of the basal area)
+
+```{r, echo=FALSE}
+burn<- stack(bs,bc,bb)
+names(burn)<-c("Burn soil", "Burn canopy", "Burn basal")
+```
+
+###Does bat occupancy differ with forest type
+
+- Explanatory variable = Stand type 
+-	Explanatory variable = Forest type (type of forest typified in Vegetation existing 
+- Abiotic variables (Altitud)
+-	Explanatory variable = Historic burn age 
+
+```{r,echo=FALSE}
+
+Forest.Type <- stack(Vegetation_existing,SeralStage,FireReturnAll)
+names(Forest.Type) <- c("Vegetation Type","Seral Stage", "Fire Interval")
+
+```
+
+
+###Does bat occupancy differ with roost site availability?
+
+- Explanatory variable = Associated forest metrics (Lidar, distance to water) 
+
+##Which factors affect bat occupancy in unburned forest?
+
+- explanatory variables(distance to road, distance to water, altitud)
+
+```{r, echo=FALSE}
+abiotic <- stack(roaddist.r, topo, riverdist.r)
+names(abiotic)<-c("Road distance", "Altitud", "River distance")
+```
+
+##Is occupancy affected by presence of heterospecifics?
+
+###is bat occupancy affected by presence of other bats? (competition)
+
+- Explanatory variable, occupancy of other bats (based on this study)
+
+###is bat occupancy affected by the presence of preys?
+
+- Explanatory variable, athropod emergence (Lora's Study), athropod abundace (Our study)
+
+#Sampling desing and sampling unit
+
+In order for us to study bat occupancy and to spatially predict it using the factors described in the previous section, most of the diversity of the forest has to be included in the model. To include that variability, I classified the environments using the following layers (Height, Fire Interval, Distance to Road, Vegetation Type and Distance to Water)
+
+##Constrains
+
+The slopes in Plumas National Forest can be very steep and dangerous for some of the sampling activities, in order to avoid this potential dangers, a slope layer was created and all slopes above 15 degrees were taken out of the sampling area (7.8% of the area) due to the dangers of working in them. The result is a stack of the layers mentioned above minus the areas that are too steep.
+
+
+##Check for correlation between rasters
+
+First will scale every layer so that it goes from 0 to 1, in order for no layer to have more weight in the classification. And then we check the correlation between rasters, we would have to take out layers that have a high correlation between them. In figure 4, we see the relationship between our predictive variables. Here we see that there are no layers with high correlation and hence we keep all of them.
+
+```{r,cache=TRUE, echo=FALSE, results='asis'}
+library("raster", lib.loc="~/R/win-library/3.2")
+AllLayers1 <-stack(topo,FireReturnAll,roaddist.r, Vegetation_existing, riverdist.r)
+names(AllLayers1)<-c("Height","Fire_Interval", "Distance_to_Road","Veg_Type", "Distance_to_Water")
+slope<-terrain(topo, opt=c("slope"), unit= "degrees",neighbors=8)
+summary(slope)
+slope[slope > 15] <- NA
+slope.15<-slope*PNF
+plot(slope.15,colNA="black")
+slope.15[slope.15 >= 0] <- 1
+AllLayers1<-AllLayers1*slope.15
+AllLayers2<-AllLayers1*PNF
+names(AllLayers2)<-c("Height","Fire_Interval", "Distance_to_Road","Veg_Type", "Distance_to_Water")
+plot (AllLayers2, colNA="black")
+pairs(AllLayers2)
+rasterRescale<-function(r){
+    ((r-cellStats(r,"min"))/(cellStats(r,"max")-cellStats(r,"min")))
+}
+AllLayers2<-rasterRescale(AllLayers2)
+#AllLayers2<-dropLayer(AllLayers2,5)
+plot(AllLayers2)
+```
+
+#Clasification
+
+Now we will use kmeans to sort the area into 5 types of habitat using the abovementioned rasterstack, and it will be ploted with different colors for every type of environment.
+
+
+```{r, echo=FALSE}
+valuetable <- getValues(AllLayers2)
+km1 <- kmeans(na.omit(valuetable), centers = 5, iter.max = 100, nstart = 10)
+# create a blank raster with default values of 0
+rNA <- setValues(raster(AllLayers2), 0)
+for(i in 1:nlayers(AllLayers2)){
+  rNA[is.na(AllLayers2[[i]])] <- 1
+}
+# convert rNA to an integer vector
+rNA <- getValues(rNA)
+# convert valuetable to a data.frame
+valuetable <- as.data.frame(valuetable)
+# if rNA is a 0, assign the cluster value at that position
+valuetable$class[rNA==0] <- km1$cluster
+# if rNA is a 1, assign an NA at that position
+valuetable$class[rNA==1] <- NA
+# create a blank raster
+classes1 <- raster(AllLayers2)
+# assign values from the 'class' column of valuetable
+classes1 <- setValues(classes1, valuetable$class)
+plot(classes1, legend=TRUE, colNA="black")
+#More info on how to do this clasification in *https://geoscripting-wur.github.io/AdvancedRasterAnalysis/*
+```
+#separate layers acording to places with or without fire
+
+Now we will separate the whole area in two subtypes burned areas and non-buned areas, based on the burn severity layers
+
+```{r, echo=FALSE}
+df.bs1 <- data.frame(id=c(0,1,2,3,4,5), v=c(NA,1,1,1,1,1))
+fire <- subs(bs1, df.bs1,subswithNA=FALSE)
+fire<-projectRaster(fire, PNF)
+
+df.bs2 <- data.frame(id=c(NA,1), v=c(1,NA))
+not.fire <- subs(fire, df.bs2,subswithNA=FALSE)
+
+classes.with.fire<-classes1*fire
+classes.without.fire<-classes1*not.fire
+
+plot(classes.with.fire,colNA="black", main="Classification within burned area")
+plot(classes.without.fire,colNA="black",main="Classification within non-burned area")
+```
+
+#Extract Random points from each habitat type with equal number in fire and non fire
+
+During the first year of sampling 120 samples will be colected, 60 in burned areas, and 60 in non-burned areas, within each, 12 random points will be sampled in each habtitat type defined by the K-means classification.
+
+
+- 60 random points in not Fire, 12 random points per each environment type
+- 60 random points in Fire, 12 random points per each environment type
+- We plot the chosen random points over the topographic map, each color is an environment type, full circles are places where there was no fire, and full triangles, where there was a fire
+
+
+```{r, fig.height=6, fig.width=8, echo=FALSE}
+library(rgdal)
+set.seed(12)
+
+df.class.1f <- data.frame(id=c(1,2,3,4,5), v=c(1,NA,NA,NA,NA))
+class1f <- subs(classes.with.fire, df.class.1f,subswithNA=FALSE)
+points1f<-sampleRandom(class1f,12, na.rm=TRUE, xy=TRUE, sp=TRUE)
+
+
+df.class.1nf <- data.frame(id=c(1,2,3,4,5), v=c(1,NA,NA,NA,NA))
+class1nf <- subs(classes.without.fire, df.class.1nf,subswithNA=FALSE)
+points1nf<-sampleRandom(class1nf,12, na.rm=TRUE, xy=TRUE, sp=TRUE)
+
+df.class.2f <- data.frame(id=c(1,2,3,4,5), v=c(NA,2,NA,NA,NA))
+class2f <- subs(classes.with.fire, df.class.2f,subswithNA=FALSE)
+points2f<-sampleRandom(class2f,12, na.rm=TRUE, xy=TRUE, sp=TRUE)
+
+df.class.2nf <- data.frame(id=c(1,2,3,4,5), v=c(NA,2,NA,NA,NA))
+class2nf <- subs(classes.without.fire, df.class.2nf,subswithNA=FALSE)
+points2nf<-sampleRandom(class2nf,12, na.rm=TRUE, xy=TRUE, sp=TRUE)
+
+df.class.3f <- data.frame(id=c(1,2,3,4,5), v=c(NA,NA,3,NA,NA))
+class3f <- subs(classes.with.fire, df.class.3f,subswithNA=FALSE)
+points3f<-sampleRandom(class3f,12, na.rm=TRUE, xy=TRUE, sp=TRUE)
+
+df.class.3nf <- data.frame(id=c(1,2,3,4,5), v=c(NA,NA,3,NA,NA))
+class3nf <- subs(classes.without.fire, df.class.3nf,subswithNA=FALSE)
+points3nf<-sampleRandom(class3nf,12, na.rm=TRUE, xy=TRUE, sp=TRUE)
+
+df.class.4f <- data.frame(id=c(1,2,3,4,5), v=c(NA,NA,NA,4,NA))
+class4f <- subs(classes.with.fire, df.class.4f,subswithNA=FALSE)
+points4f<-sampleRandom(class4f,12, na.rm=TRUE, xy=TRUE, sp= TRUE)
+
+df.class.4nf <- data.frame(id=c(1,2,3,4,5), v=c(NA,NA,NA,4,NA))
+class4nf <- subs(classes.without.fire, df.class.4nf,subswithNA=FALSE)
+points4nf<-sampleRandom(class4nf,12, na.rm=TRUE, xy=TRUE, sp=TRUE)
+
+df.class.5f <- data.frame(id=c(1,2,3,4,5), v=c(NA,NA,NA,NA,5))
+class5f <- subs(classes.with.fire, df.class.5f,subswithNA=FALSE)
+points5f<-sampleRandom(class5f,12, na.rm=TRUE, xy=TRUE, sp=TRUE)
+
+df.class.5nf <- data.frame(id=c(1,2,3,4,5), v=c(NA,NA,NA,NA,5))
+class5nf <- subs(classes.without.fire, df.class.5nf,subswithNA=FALSE)
+points5nf<-sampleRandom(class5nf,12, na.rm=TRUE, xy=TRUE, sp=TRUE)
+
+```
+
+```{r, echo=FALSE}
+library("rasterVis", lib.loc="~/R/win-library/3.2")
+topo.park<-(topo*PNF)
+arterial<-roads.v[roads.v$FUNCTIONAL=="A - ARTERIAL",]
+collector<-roads.v[roads.v$FUNCTIONAL=="C - COLLECTOR",]
+local<-roads.v[roads.v$FUNCTIONAL=="L - LOCAL",]
+levelplot(topo.park, contour=TRUE, margin=FALSE)+ layer(sp.points(points5nf, col="purple", pch=17))+ layer(sp.points(points5f, col="purple", pch=19))+ layer(sp.points(points4nf, col="brown", pch=17))+ layer(sp.points(points4f, col="brown", pch=19))+ layer(sp.points(points3nf, col="red", pch=17))+ layer(sp.points(points3f, col="red", pch=19))+ layer(sp.points(points2nf, col="blue", pch=17))+ layer(sp.points(points2f, col="blue", pch=19))+ layer(sp.points(points1nf, col="black", pch=17))+ layer(sp.points(points1f, col="black", pch=19))+layer(sp.lines(arterial, col="red", lw=2))+layer(sp.lines(collector, col="red", lw=1, lty=2))
+
+```
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+library(shapefiles)
+#f1
+h1fs1<-points1f[1,]
+writePointsShape(h1fs1, "h1fs1")
+writeOGR(h1fs1, dsn = "h1fs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs2<-points1f[2,]
+writePointsShape(h1fs2, "h1fs2")
+writeOGR(h1fs2, dsn = "h1fs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs3<-points1f[3,]
+writePointsShape(h1fs3, "h1fs3")
+writeOGR(h1fs3, dsn = "h1fs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs4<-points1f[4,]
+writePointsShape(h1fs4, "h1fs4")
+writeOGR(h1fs4, dsn = "h1fs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs5<-points1f[5,]
+writePointsShape(h1fs5, "h1fs5")
+writeOGR(h1fs5, dsn = "h1fs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs6<-points1f[6,]
+writePointsShape(h1fs6, "h1fs6")
+writeOGR(h1fs6, dsn = "h1fs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs7<-points1f[7,]
+writePointsShape(h1fs7, "h1fs7")
+writeOGR(h1fs7, dsn = "h1fs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs8<-points1f[8,]
+writePointsShape(h1fs8, "h1fs8")
+writeOGR(h1fs8, dsn = "h1fs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs9<-points1f[9,]
+writePointsShape(h1fs9, "h1fs9")
+writeOGR(h1fs9, dsn = "h1fs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs10<-points1f[10,]
+writePointsShape(h1fs10, "h1fs10")
+writeOGR(h1fs10, dsn = "h1fs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs11<-points1f[11,]
+writePointsShape(h1fs11, "h1fs11")
+writeOGR(h1fs11, dsn = "h1fs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1fs12<-points1f[12,]
+writePointsShape(h1fs12, "h1fs12")
+writeOGR(h1fs12, dsn = "h1fs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+
+#nf1
+
+h1nfs1<-points1nf[1,]
+writePointsShape(h1nfs1, "h1nfs1")
+writeOGR(h1nfs1, dsn = "h1nfs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs2<-points1nf[2,]
+writePointsShape(h1nfs2, "h1nfs2")
+writeOGR(h1nfs2, dsn = "h1nfs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs3<-points1nf[3,]
+writePointsShape(h1nfs3, "h1nfs3")
+writeOGR(h1nfs3, dsn = "h1nfs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs4<-points1nf[4,]
+writePointsShape(h1nfs4, "h1nfs4")
+writeOGR(h1nfs4, dsn = "h1nfs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs5<-points1nf[5,]
+writePointsShape(h1nfs5, "h1nfs5")
+writeOGR(h1nfs5, dsn = "h1nfs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs6<-points1nf[6,]
+writePointsShape(h1nfs6, "h1nfs6")
+writeOGR(h1nfs6, dsn = "h1nfs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs7<-points1nf[7,]
+writePointsShape(h1nfs7, "h1nfs7")
+writeOGR(h1nfs7, dsn = "h1nfs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs8<-points1nf[8,]
+writePointsShape(h1nfs8, "h1nfs8")
+writeOGR(h1nfs8, dsn = "h1nfs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs9<-points1nf[9,]
+writePointsShape(h1nfs9, "h1nfs9")
+writeOGR(h1nfs9, dsn = "h1nfs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs10<-points1nf[10,]
+writePointsShape(h1nfs10, "h1nfs10")
+writeOGR(h1nfs10, dsn = "h1nfs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs11<-points1nf[11,]
+writePointsShape(h1nfs11, "h1nfs11")
+writeOGR(h1nfs11, dsn = "h1nfs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h1nfs12<-points1nf[12,]
+writePointsShape(h1nfs12, "h1nfs12")
+writeOGR(h1nfs12, dsn = "h1nfs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+
+#f2######################
+
+h2fs1<-points2f[1,]
+writePointsShape(h2fs1, "h2fs1")
+writeOGR(h2fs1, dsn = "h2fs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs2<-points2f[2,]
+writePointsShape(h2fs2, "h2fs2")
+writeOGR(h2fs2, dsn = "h2fs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs3<-points2f[3,]
+writePointsShape(h2fs3, "h2fs3")
+writeOGR(h2fs3, dsn = "h2fs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs4<-points2f[4,]
+writePointsShape(h2fs4, "h2fs4")
+writeOGR(h2fs4, dsn = "h2fs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs5<-points2f[5,]
+writePointsShape(h2fs5, "h2fs5")
+writeOGR(h2fs5, dsn = "h2fs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs6<-points2f[6,]
+writePointsShape(h2fs6, "h2fs6")
+writeOGR(h2fs6, dsn = "h2fs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs7<-points2f[7,]
+writePointsShape(h2fs7, "h2fs7")
+writeOGR(h2fs7, dsn = "h2fs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs8<-points2f[8,]
+writePointsShape(h2fs8, "h2fs8")
+writeOGR(h2fs8, dsn = "h2fs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs9<-points2f[9,]
+writePointsShape(h2fs9, "h2fs9")
+writeOGR(h2fs9, dsn = "h2fs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs10<-points2f[10,]
+writePointsShape(h2fs10, "h2fs10")
+writeOGR(h2fs10, dsn = "h2fs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs11<-points2f[11,]
+writePointsShape(h2fs11, "h2fs11")
+writeOGR(h2fs11, dsn = "h2fs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2fs12<-points2f[12,]
+writePointsShape(h2fs12, "h2fs12")
+writeOGR(h2fs12, dsn = "h2fs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+
+#nf2
+
+h2nfs1<-points2nf[1,]
+writePointsShape(h2nfs1, "h2nfs1")
+writeOGR(h2nfs1, dsn = "h2nfs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs2<-points2nf[2,]
+writePointsShape(h2nfs2, "h2nfs2")
+writeOGR(h2nfs2, dsn = "h2nfs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs3<-points2nf[3,]
+writePointsShape(h2nfs3, "h2nfs3")
+writeOGR(h2nfs3, dsn = "h2nfs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs4<-points2nf[4,]
+writePointsShape(h2nfs4, "h2nfs4")
+writeOGR(h2nfs4, dsn = "h2nfs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs5<-points2nf[5,]
+writePointsShape(h2nfs5, "h2nfs5")
+writeOGR(h2nfs5, dsn = "h2nfs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs6<-points2nf[6,]
+writePointsShape(h2nfs6, "h2nfs6")
+writeOGR(h2nfs6, dsn = "h2nfs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs7<-points2nf[7,]
+writePointsShape(h2nfs7, "h2nfs7")
+writeOGR(h2nfs7, dsn = "h2nfs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs8<-points2nf[8,]
+writePointsShape(h2nfs8, "h2nfs8")
+writeOGR(h2nfs8, dsn = "h2nfs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs9<-points2nf[9,]
+writePointsShape(h2nfs9, "h2nfs9")
+writeOGR(h2nfs9, dsn = "h2nfs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs10<-points2nf[10,]
+writePointsShape(h2nfs10, "h2nfs10")
+writeOGR(h2nfs10, dsn = "h2nfs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs11<-points2nf[11,]
+writePointsShape(h2nfs11, "h2nfs11")
+writeOGR(h2nfs11, dsn = "h2nfs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h2nfs12<-points2nf[12,]
+writePointsShape(h2nfs12, "h2nfs12")
+writeOGR(h2nfs12, dsn = "h2nfs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+
+#f3 desde aca
+
+h3fs1<-points3f[1,]
+writePointsShape(h3fs1, "h3fs1")
+writeOGR(h3fs1, dsn = "h3fs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs2<-points3f[2,]
+writePointsShape(h3fs2, "h3fs2")
+writeOGR(h3fs2, dsn = "h3fs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs3<-points3f[3,]
+writePointsShape(h3fs3, "h3fs3")
+writeOGR(h3fs3, dsn = "h3fs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs4<-points3f[4,]
+writePointsShape(h3fs4, "h3fs4")
+writeOGR(h3fs4, dsn = "h3fs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs5<-points3f[5,]
+writePointsShape(h3fs5, "h3fs5")
+writeOGR(h3fs5, dsn = "h3fs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs6<-points3f[6,]
+writePointsShape(h3fs6, "h3fs6")
+writeOGR(h3fs6, dsn = "h3fs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs7<-points3f[7,]
+writePointsShape(h3fs7, "h3fs7")
+writeOGR(h3fs7, dsn = "h3fs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs8<-points3f[8,]
+writePointsShape(h3fs8, "h3fs8")
+writeOGR(h3fs8, dsn = "h3fs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs9<-points3f[9,]
+writePointsShape(h3fs9, "h3fs9")
+writeOGR(h3fs9, dsn = "h3fs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs10<-points3f[10,]
+writePointsShape(h3fs10, "h3fs10")
+writeOGR(h3fs10, dsn = "h3fs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs11<-points3f[11,]
+writePointsShape(h3fs11, "h3fs11")
+writeOGR(h3fs11, dsn = "h3fs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3fs12<-points3f[12,]
+writePointsShape(h3fs12, "h3fs12")
+writeOGR(h3fs12, dsn = "h3fs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+
+#nf3
+
+h3nfs1<-points3nf[1,]
+writePointsShape(h3nfs1, "h3nfs1")
+writeOGR(h3nfs1, dsn = "h3nfs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs2<-points3nf[2,]
+writePointsShape(h3nfs2, "h3nfs2")
+writeOGR(h3nfs2, dsn = "h3nfs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs3<-points3nf[3,]
+writePointsShape(h3nfs3, "h3nfs3")
+writeOGR(h3nfs3, dsn = "h3nfs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs4<-points3nf[4,]
+writePointsShape(h3nfs4, "h3nfs4")
+writeOGR(h3nfs4, dsn = "h3nfs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs5<-points3nf[5,]
+writePointsShape(h3nfs5, "h3nfs5")
+writeOGR(h3nfs5, dsn = "h3nfs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs6<-points3nf[6,]
+writePointsShape(h3nfs6, "h3nfs6")
+writeOGR(h3nfs6, dsn = "h3nfs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs7<-points3nf[7,]
+writePointsShape(h3nfs7, "h3nfs7")
+writeOGR(h3nfs7, dsn = "h3nfs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs8<-points3nf[8,]
+writePointsShape(h3nfs8, "h3nfs8")
+writeOGR(h3nfs8, dsn = "h3nfs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs9<-points3nf[9,]
+writePointsShape(h3nfs9, "h3nfs9")
+writeOGR(h3nfs9, dsn = "h3nfs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs10<-points3nf[10,]
+writePointsShape(h3nfs10, "h3nfs10")
+writeOGR(h3nfs10, dsn = "h3nfs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs11<-points3nf[11,]
+writePointsShape(h3nfs11, "h3nfs11")
+writeOGR(h3nfs11, dsn = "h3nfs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h3nfs12<-points3nf[12,]
+writePointsShape(h3nfs12, "h3nfs12")
+writeOGR(h3nfs12, dsn = "h3nfs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+
+#f4
+
+h4fs1<-points4f[1,]
+writePointsShape(h4fs1, "h4fs1")
+writeOGR(h4fs1, dsn = "h4fs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs2<-points4f[2,]
+writePointsShape(h4fs2, "h4fs2")
+writeOGR(h4fs2, dsn = "h4fs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs3<-points4f[3,]
+writePointsShape(h4fs3, "h4fs3")
+writeOGR(h4fs3, dsn = "h4fs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs4<-points4f[4,]
+writePointsShape(h4fs4, "h4fs4")
+writeOGR(h4fs4, dsn = "h4fs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs5<-points4f[5,]
+writePointsShape(h4fs5, "h4fs5")
+writeOGR(h4fs5, dsn = "h4fs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs6<-points4f[6,]
+writePointsShape(h4fs6, "h4fs6")
+writeOGR(h4fs6, dsn = "h4fs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs7<-points4f[7,]
+writePointsShape(h4fs7, "h4fs7")
+writeOGR(h4fs7, dsn = "h4fs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs8<-points4f[8,]
+writePointsShape(h4fs8, "h4fs8")
+writeOGR(h4fs8, dsn = "h4fs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs9<-points4f[9,]
+writePointsShape(h4fs9, "h4fs9")
+writeOGR(h4fs9, dsn = "h4fs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs10<-points4f[10,]
+writePointsShape(h4fs10, "h4fs10")
+writeOGR(h4fs10, dsn = "h4fs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs11<-points4f[11,]
+writePointsShape(h4fs11, "h4fs11")
+writeOGR(h4fs11, dsn = "h4fs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4fs12<-points4f[12,]
+writePointsShape(h4fs12, "h4fs12")
+writeOGR(h4fs12, dsn = "h4fs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+
+#nf4
+
+h4nfs1<-points4nf[1,]
+writePointsShape(h4nfs1, "h4nfs1")
+writeOGR(h4nfs1, dsn = "h4nfs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs2<-points4nf[2,]
+writePointsShape(h4nfs2, "h4nfs2")
+writeOGR(h4nfs2, dsn = "h4nfs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs3<-points4nf[3,]
+writePointsShape(h4nfs3, "h4nfs3")
+writeOGR(h4nfs3, dsn = "h4nfs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs4<-points4nf[4,]
+writePointsShape(h4nfs4, "h4nfs4")
+writeOGR(h4nfs4, dsn = "h4nfs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs5<-points4nf[5,]
+writePointsShape(h4nfs5, "h4nfs5")
+writeOGR(h4nfs5, dsn = "h4nfs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs6<-points4nf[6,]
+writePointsShape(h4nfs6, "h4nfs6")
+writeOGR(h4nfs6, dsn = "h4nfs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs7<-points4nf[7,]
+writePointsShape(h4nfs7, "h4nfs7")
+writeOGR(h4nfs7, dsn = "h4nfs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs8<-points4nf[8,]
+writePointsShape(h4nfs8, "h4nfs8")
+writeOGR(h4nfs8, dsn = "h4nfs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs9<-points4nf[9,]
+writePointsShape(h4nfs9, "h4nfs9")
+writeOGR(h4nfs9, dsn = "h4nfs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs10<-points4nf[10,]
+writePointsShape(h4nfs10, "h4nfs10")
+writeOGR(h4nfs10, dsn = "h4nfs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs11<-points4nf[11,]
+writePointsShape(h4nfs11, "h4nfs11")
+writeOGR(h4nfs11, dsn = "h4nfs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h4nfs12<-points4nf[12,]
+writePointsShape(h4nfs12, "h4nfs12")
+writeOGR(h4nfs12, dsn = "h4nfs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+
+#5f
+
+h5fs1<-points5f[1,]
+writePointsShape(h5fs1, "h5fs1")
+writeOGR(h5fs1, dsn = "h5fs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs2<-points5f[2,]
+writePointsShape(h5fs2, "h5fs2")
+writeOGR(h5fs2, dsn = "h5fs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs3<-points5f[3,]
+writePointsShape(h5fs3, "h5fs3")
+writeOGR(h5fs3, dsn = "h5fs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs4<-points5f[4,]
+writePointsShape(h5fs4, "h5fs4")
+writeOGR(h5fs4, dsn = "h5fs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs5<-points5f[5,]
+writePointsShape(h5fs5, "h5fs5")
+writeOGR(h5fs5, dsn = "h5fs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs6<-points5f[6,]
+writePointsShape(h5fs6, "h5fs6")
+writeOGR(h5fs6, dsn = "h5fs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs7<-points5f[7,]
+writePointsShape(h5fs7, "h5fs7")
+writeOGR(h5fs7, dsn = "h5fs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs8<-points5f[8,]
+writePointsShape(h5fs8, "h5fs8")
+writeOGR(h5fs8, dsn = "h5fs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs9<-points5f[9,]
+writePointsShape(h5fs9, "h5fs9")
+writeOGR(h5fs9, dsn = "h5fs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs10<-points5f[10,]
+writePointsShape(h5fs10, "h5fs10")
+writeOGR(h5fs10, dsn = "h5fs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs11<-points5f[11,]
+writePointsShape(h5fs11, "h5fs11")
+writeOGR(h5fs11, dsn = "h5fs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5fs12<-points5f[12,]
+writePointsShape(h5fs12, "h5fs12")
+writeOGR(h5fs12, dsn = "h5fs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+
+#nf5
+
+h5nfs1<-points5nf[1,]
+writePointsShape(h5nfs1, "h5nfs1")
+writeOGR(h5nfs1, dsn = "h5nfs1.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs2<-points5nf[2,]
+writePointsShape(h5nfs2, "h5nfs2")
+writeOGR(h5nfs2, dsn = "h5nfs2.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs3<-points5nf[3,]
+writePointsShape(h5nfs3, "h5nfs3")
+writeOGR(h5nfs3, dsn = "h5nfs3.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs4<-points5nf[4,]
+writePointsShape(h5nfs4, "h5nfs4")
+writeOGR(h5nfs4, dsn = "h5nfs4.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs5<-points5nf[5,]
+writePointsShape(h5nfs5, "h5nfs5")
+writeOGR(h5nfs5, dsn = "h5nfs5.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs6<-points5nf[6,]
+writePointsShape(h5nfs6, "h5nfs6")
+writeOGR(h5nfs6, dsn = "h5nfs6.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs7<-points5nf[7,]
+writePointsShape(h5nfs7, "h5nfs7")
+writeOGR(h5nfs7, dsn = "h5nfs7.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs8<-points5nf[8,]
+writePointsShape(h5nfs8, "h5nfs8")
+writeOGR(h5nfs8, dsn = "h5nfs8.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs9<-points5nf[9,]
+writePointsShape(h5nfs9, "h5nfs9")
+writeOGR(h5nfs9, dsn = "h5nfs9.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs10<-points5nf[10,]
+writePointsShape(h5nfs10, "h5nfs10")
+writeOGR(h5nfs10, dsn = "h5nfs10.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs11<-points5nf[11,]
+writePointsShape(h5nfs11, "h5nfs11")
+writeOGR(h5nfs11, dsn = "h5nfs11.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+h5nfs12<-points5nf[12,]
+writePointsShape(h5nfs12, "h5nfs12")
+writeOGR(h5nfs12, dsn = "h5nfs12.kml",layer="C:/Users/usuario/Bats_California/new_layers", driver = "KML")
+Points.Sample<-c(h1fs1,h1nfs1,h2fs1,h2nfs1,h3fs1, h3nfs1, h4fs1,h4nfs1,h5fs1,h5nfs1)
+
+library("foreign", lib.loc="C:/Program Files/R/R-3.2.0/library")
+
+h1fs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs1.dbf")
+h1fs1$LinkID <- "h1fs1"
+write.dbf(h1fs1,"C:/Users/usuario/Bats_California/Rbats/h1fs1.dbf")
+
+h1fs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs2.dbf")
+h1fs2$LinkID <- "h1fs2"
+write.dbf(h1fs2,"C:/Users/usuario/Bats_California/Rbats/h1fs2.dbf")
+
+h1fs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs3.dbf")
+h1fs3$LinkID <- "h1fs3"
+write.dbf(h1fs3,"C:/Users/usuario/Bats_California/Rbats/h1fs3.dbf")
+
+h1fs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs4.dbf")
+h1fs4$LinkID <- "h1fs4"
+write.dbf(h1fs4,"C:/Users/usuario/Bats_California/Rbats/h1fs4.dbf")
+
+h1fs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs5.dbf")
+h1fs5$LinkID <- "h1fs5"
+write.dbf(h1fs5,"C:/Users/usuario/Bats_California/Rbats/h1fs5.dbf")
+
+h1fs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs6.dbf")
+h1fs6$LinkID <- "h1fs6"
+write.dbf(h1fs6,"C:/Users/usuario/Bats_California/Rbats/h1fs6.dbf")
+
+h1fs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs7.dbf")
+h1fs7$LinkID <- "h1fs7"
+write.dbf(h1fs7,"C:/Users/usuario/Bats_California/Rbats/h1fs7.dbf")
+
+h1fs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs8.dbf")
+h1fs8$LinkID <- "h1fs8"
+write.dbf(h1fs8,"C:/Users/usuario/Bats_California/Rbats/h1fs8.dbf")
+
+h1fs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs9.dbf")
+h1fs9$LinkID <- "h1fs9"
+write.dbf(h1fs9,"C:/Users/usuario/Bats_California/Rbats/h1fs9.dbf")
+
+h1fs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs10.dbf")
+h1fs10$LinkID <- "h1fs10"
+write.dbf(h1fs10,"C:/Users/usuario/Bats_California/Rbats/h1fs10.dbf")
+
+h1fs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs11.dbf")
+h1fs11$LinkID <- "h1fs11"
+write.dbf(h1fs11,"C:/Users/usuario/Bats_California/Rbats/h1fs11.dbf")
+
+h1fs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1fs12.dbf")
+h1fs12$LinkID <- "h1fs12"
+write.dbf(h1fs12,"C:/Users/usuario/Bats_California/Rbats/h1fs12.dbf")
+
+#####################################################
+#1nf
+
+h1nfs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs1.dbf")
+h1nfs1$LinkID <- "h1nfs1"
+write.dbf(h1nfs1,"C:/Users/usuario/Bats_California/Rbats/h1nfs1.dbf")
+
+h1nfs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs2.dbf")
+h1nfs2$LinkID <- "h1nfs2"
+write.dbf(h1nfs2,"C:/Users/usuario/Bats_California/Rbats/h1nfs2.dbf")
+
+h1nfs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs3.dbf")
+h1nfs3$LinkID <- "h1nfs3"
+write.dbf(h1nfs3,"C:/Users/usuario/Bats_California/Rbats/h1nfs3.dbf")
+
+h1nfs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs4.dbf")
+h1nfs4$LinkID <- "h1nfs4"
+write.dbf(h1nfs4,"C:/Users/usuario/Bats_California/Rbats/h1nfs4.dbf")
+
+h1nfs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs5.dbf")
+h1nfs5$LinkID <- "h1nfs5"
+write.dbf(h1nfs5,"C:/Users/usuario/Bats_California/Rbats/h1nfs5.dbf")
+
+h1nfs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs6.dbf")
+h1nfs6$LinkID <- "h1nfs6"
+write.dbf(h1nfs6,"C:/Users/usuario/Bats_California/Rbats/h1nfs6.dbf")
+
+h1nfs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs7.dbf")
+h1nfs7$LinkID <- "h1nfs7"
+write.dbf(h1nfs7,"C:/Users/usuario/Bats_California/Rbats/h1nfs7.dbf")
+
+h1nfs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs8.dbf")
+h1nfs8$LinkID <- "h1nfs8"
+write.dbf(h1nfs8,"C:/Users/usuario/Bats_California/Rbats/h1nfs8.dbf")
+
+h1nfs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs9.dbf")
+h1nfs9$LinkID <- "h1nfs9"
+write.dbf(h1nfs9,"C:/Users/usuario/Bats_California/Rbats/h1nfs9.dbf")
+
+h1nfs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs10.dbf")
+h1nfs10$LinkID <- "h1nfs10"
+write.dbf(h1nfs10,"C:/Users/usuario/Bats_California/Rbats/h1nfs10.dbf")
+
+h1nfs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs11.dbf")
+h1nfs11$LinkID <- "h1nfs11"
+write.dbf(h1nfs11,"C:/Users/usuario/Bats_California/Rbats/h1nfs11.dbf")
+
+h1nfs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h1nfs12.dbf")
+h1nfs12$LinkID <- "h1nfs12"
+write.dbf(h1nfs12,"C:/Users/usuario/Bats_California/Rbats/h1nfs12.dbf")
+
+#################################################################
+##f2
+
+h2fs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs1.dbf")
+h2fs1$LinkID <- "h2fs1"
+write.dbf(h2fs1,"C:/Users/usuario/Bats_California/Rbats/h2fs1.dbf")
+
+h2fs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs2.dbf")
+h2fs2$LinkID <- "h2fs2"
+write.dbf(h2fs2,"C:/Users/usuario/Bats_California/Rbats/h2fs2.dbf")
+
+h2fs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs3.dbf")
+h2fs3$LinkID <- "h2fs3"
+write.dbf(h2fs3,"C:/Users/usuario/Bats_California/Rbats/h2fs3.dbf")
+
+h2fs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs4.dbf")
+h2fs4$LinkID <- "h2fs4"
+write.dbf(h2fs4,"C:/Users/usuario/Bats_California/Rbats/h2fs4.dbf")
+
+h2fs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs5.dbf")
+h2fs5$LinkID <- "h2fs5"
+write.dbf(h2fs5,"C:/Users/usuario/Bats_California/Rbats/h2fs5.dbf")
+
+h2fs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs6.dbf")
+h2fs6$LinkID <- "h2fs6"
+write.dbf(h2fs6,"C:/Users/usuario/Bats_California/Rbats/h2fs6.dbf")
+
+h2fs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs7.dbf")
+h2fs7$LinkID <- "h2fs7"
+write.dbf(h2fs7,"C:/Users/usuario/Bats_California/Rbats/h2fs7.dbf")
+
+h2fs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs8.dbf")
+h2fs8$LinkID <- "h2fs8"
+write.dbf(h2fs8,"C:/Users/usuario/Bats_California/Rbats/h2fs8.dbf")
+
+h2fs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs9.dbf")
+h2fs9$LinkID <- "h2fs9"
+write.dbf(h2fs9,"C:/Users/usuario/Bats_California/Rbats/h2fs9.dbf")
+
+h2fs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs10.dbf")
+h2fs10$LinkID <- "h2fs10"
+write.dbf(h2fs10,"C:/Users/usuario/Bats_California/Rbats/h2fs10.dbf")
+
+h2fs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs11.dbf")
+h2fs11$LinkID <- "h2fs11"
+write.dbf(h2fs11,"C:/Users/usuario/Bats_California/Rbats/h2fs11.dbf")
+
+h2fs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2fs12.dbf")
+h2fs12$LinkID <- "h2fs12"
+write.dbf(h2fs12,"C:/Users/usuario/Bats_California/Rbats/h2fs12.dbf")
+
+#####################################################
+#2nf
+
+h2nfs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs1.dbf")
+h2nfs1$LinkID <- "h2nfs1"
+write.dbf(h2nfs1,"C:/Users/usuario/Bats_California/Rbats/h2nfs1.dbf")
+
+h2nfs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs2.dbf")
+h2nfs2$LinkID <- "h2nfs2"
+write.dbf(h2nfs2,"C:/Users/usuario/Bats_California/Rbats/h2nfs2.dbf")
+
+h2nfs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs3.dbf")
+h2nfs3$LinkID <- "h2nfs3"
+write.dbf(h2nfs3,"C:/Users/usuario/Bats_California/Rbats/h2nfs3.dbf")
+
+h2nfs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs4.dbf")
+h2nfs4$LinkID <- "h2nfs4"
+write.dbf(h2nfs4,"C:/Users/usuario/Bats_California/Rbats/h2nfs4.dbf")
+
+h2nfs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs5.dbf")
+h2nfs5$LinkID <- "h2nfs5"
+write.dbf(h2nfs5,"C:/Users/usuario/Bats_California/Rbats/h2nfs5.dbf")
+
+h2nfs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs6.dbf")
+h2nfs6$LinkID <- "h2nfs6"
+write.dbf(h1nfs6,"C:/Users/usuario/Bats_California/Rbats/h2nfs6.dbf")
+
+h2nfs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs7.dbf")
+h2nfs7$LinkID <- "h2nfs7"
+write.dbf(h2nfs7,"C:/Users/usuario/Bats_California/Rbats/h2nfs7.dbf")
+
+h2nfs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs8.dbf")
+h2nfs8$LinkID <- "h2nfs8"
+write.dbf(h2nfs8,"C:/Users/usuario/Bats_California/Rbats/h2nfs8.dbf")
+
+h2nfs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs9.dbf")
+h2nfs9$LinkID <- "h2nfs9"
+write.dbf(h2nfs9,"C:/Users/usuario/Bats_California/Rbats/h2nfs9.dbf")
+
+h2nfs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs10.dbf")
+h2nfs10$LinkID <- "h2nfs10"
+write.dbf(h2nfs10,"C:/Users/usuario/Bats_California/Rbats/h2nfs10.dbf")
+
+h2nfs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs11.dbf")
+h2nfs11$LinkID <- "h2nfs11"
+write.dbf(h2nfs11,"C:/Users/usuario/Bats_California/Rbats/h2nfs11.dbf")
+
+h2nfs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h2nfs12.dbf")
+h2nfs12$LinkID <- "h2nfs12"
+write.dbf(h2nfs12,"C:/Users/usuario/Bats_California/Rbats/h2nfs12.dbf")
+########################################################
+#f3
+h3fs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs1.dbf")
+h3fs1$LinkID <- "h3fs1"
+write.dbf(h3fs1,"C:/Users/usuario/Bats_California/Rbats/h3fs1.dbf")
+
+h3fs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs2.dbf")
+h3fs2$LinkID <- "h3fs2"
+write.dbf(h3fs2,"C:/Users/usuario/Bats_California/Rbats/h3fs2.dbf")
+
+h3fs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs3.dbf")
+h3fs3$LinkID <- "h3fs3"
+write.dbf(h3fs3,"C:/Users/usuario/Bats_California/Rbats/h3fs3.dbf")
+
+h3fs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs4.dbf")
+h3fs4$LinkID <- "h3fs4"
+write.dbf(h3fs4,"C:/Users/usuario/Bats_California/Rbats/h3fs4.dbf")
+
+h3fs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs5.dbf")
+h3fs5$LinkID <- "h3fs5"
+write.dbf(h3fs5,"C:/Users/usuario/Bats_California/Rbats/h3fs5.dbf")
+
+h3fs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs6.dbf")
+h3fs6$LinkID <- "h3fs6"
+write.dbf(h3fs6,"C:/Users/usuario/Bats_California/Rbats/h3fs6.dbf")
+
+h3fs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs7.dbf")
+h3fs7$LinkID <- "h3fs7"
+write.dbf(h3fs7,"C:/Users/usuario/Bats_California/Rbats/h3fs7.dbf")
+
+h3fs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs8.dbf")
+h3fs8$LinkID <- "h3fs8"
+write.dbf(h3fs8,"C:/Users/usuario/Bats_California/Rbats/h3fs8.dbf")
+
+h3fs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs9.dbf")
+h3fs9$LinkID <- "h3fs9"
+write.dbf(h3fs9,"C:/Users/usuario/Bats_California/Rbats/h3fs9.dbf")
+
+h3fs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs10.dbf")
+h3fs10$LinkID <- "h3fs10"
+write.dbf(h3fs10,"C:/Users/usuario/Bats_California/Rbats/h3fs10.dbf")
+
+h3fs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs11.dbf")
+h3fs11$LinkID <- "h3fs11"
+write.dbf(h3fs11,"C:/Users/usuario/Bats_California/Rbats/h3fs11.dbf")
+
+h3fs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3fs12.dbf")
+h3fs12$LinkID <- "h3fs12"
+write.dbf(h3fs12,"C:/Users/usuario/Bats_California/Rbats/h3fs12.dbf")
+
+#####################################################
+#3nf
+
+h3nfs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs1.dbf")
+h3nfs1$LinkID <- "h3nfs1"
+write.dbf(h3nfs1,"C:/Users/usuario/Bats_California/Rbats/h3nfs1.dbf")
+
+h3nfs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs2.dbf")
+h3nfs2$LinkID <- "h3nfs2"
+write.dbf(h3nfs2,"C:/Users/usuario/Bats_California/Rbats/h3nfs2.dbf")
+
+h3nfs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs3.dbf")
+h3nfs3$LinkID <- "h3nfs3"
+write.dbf(h3nfs3,"C:/Users/usuario/Bats_California/Rbats/h3nfs3.dbf")
+
+h3nfs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs4.dbf")
+h3nfs4$LinkID <- "h3nfs4"
+write.dbf(h3nfs4,"C:/Users/usuario/Bats_California/Rbats/h3nfs4.dbf")
+
+h3nfs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs5.dbf")
+h3nfs5$LinkID <- "h3nfs5"
+write.dbf(h3nfs5,"C:/Users/usuario/Bats_California/Rbats/h3nfs5.dbf")
+
+h3nfs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs6.dbf")
+h3nfs6$LinkID <- "h3nfs6"
+write.dbf(h3nfs6,"C:/Users/usuario/Bats_California/Rbats/h3nfs6.dbf")
+
+h3nfs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs7.dbf")
+h3nfs7$LinkID <- "h3nfs7"
+write.dbf(h3nfs7,"C:/Users/usuario/Bats_California/Rbats/h3nfs7.dbf")
+
+h3nfs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs8.dbf")
+h3nfs8$LinkID <- "h3nfs8"
+write.dbf(h3nfs8,"C:/Users/usuario/Bats_California/Rbats/h3nfs8.dbf")
+
+h3nfs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs9.dbf")
+h3nfs9$LinkID <- "h3nfs9"
+write.dbf(h3nfs9,"C:/Users/usuario/Bats_California/Rbats/h3nfs9.dbf")
+
+h3nfs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs10.dbf")
+h3nfs10$LinkID <- "h3nfs10"
+write.dbf(h3nfs10,"C:/Users/usuario/Bats_California/Rbats/h3nfs10.dbf")
+
+h3nfs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs11.dbf")
+h3nfs11$LinkID <- "h3nfs11"
+write.dbf(h3nfs11,"C:/Users/usuario/Bats_California/Rbats/h3nfs11.dbf")
+
+h3nfs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h3nfs12.dbf")
+h3nfs12$LinkID <- "h3nfs12"
+write.dbf(h3nfs12,"C:/Users/usuario/Bats_California/Rbats/h3nfs12.dbf")
+########################################################
+#f4
+h4fs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs1.dbf")
+h4fs1$LinkID <- "h3fs1"
+write.dbf(h4fs1,"C:/Users/usuario/Bats_California/Rbats/h4fs1.dbf")
+
+h4fs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs2.dbf")
+h4fs2$LinkID <- "h4fs2"
+write.dbf(h4fs2,"C:/Users/usuario/Bats_California/Rbats/h4fs2.dbf")
+
+h4fs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs3.dbf")
+h4fs3$LinkID <- "h4fs3"
+write.dbf(h4fs3,"C:/Users/usuario/Bats_California/Rbats/h4fs3.dbf")
+
+h4fs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs4.dbf")
+h4fs4$LinkID <- "h4fs4"
+write.dbf(h4fs4,"C:/Users/usuario/Bats_California/Rbats/h4fs4.dbf")
+
+h4fs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs5.dbf")
+h4fs5$LinkID <- "h4fs5"
+write.dbf(h4fs5,"C:/Users/usuario/Bats_California/Rbats/h4fs5.dbf")
+
+h4fs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs6.dbf")
+h4fs6$LinkID <- "h4fs6"
+write.dbf(h4fs6,"C:/Users/usuario/Bats_California/Rbats/h4fs6.dbf")
+
+h4fs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs7.dbf")
+h4fs7$LinkID <- "h4fs7"
+write.dbf(h4fs7,"C:/Users/usuario/Bats_California/Rbats/h4fs7.dbf")
+
+h4fs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs8.dbf")
+h4fs8$LinkID <- "h4fs8"
+write.dbf(h4fs8,"C:/Users/usuario/Bats_California/Rbats/h4fs8.dbf")
+
+h4fs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs9.dbf")
+h4fs9$LinkID <- "h4fs9"
+write.dbf(h4fs9,"C:/Users/usuario/Bats_California/Rbats/h4fs9.dbf")
+
+h4fs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs10.dbf")
+h4fs10$LinkID <- "h4fs10"
+write.dbf(h4fs10,"C:/Users/usuario/Bats_California/Rbats/h4fs10.dbf")
+
+h4fs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs11.dbf")
+h4fs11$LinkID <- "h4fs11"
+write.dbf(h4fs11,"C:/Users/usuario/Bats_California/Rbats/h4fs11.dbf")
+
+h4fs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4fs12.dbf")
+h4fs12$LinkID <- "h4fs12"
+write.dbf(h4fs12,"C:/Users/usuario/Bats_California/Rbats/h4fs12.dbf")
+
+#####################################################
+#4nf
+
+h4nfs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs1.dbf")
+h4nfs1$LinkID <- "h4nfs1"
+write.dbf(h4nfs1,"C:/Users/usuario/Bats_California/Rbats/h4nfs1.dbf")
+
+h4nfs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs2.dbf")
+h4nfs2$LinkID <- "h4nfs2"
+write.dbf(h4nfs2,"C:/Users/usuario/Bats_California/Rbats/h4nfs2.dbf")
+
+h4nfs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs3.dbf")
+h4nfs3$LinkID <- "h4nfs3"
+write.dbf(h4nfs3,"C:/Users/usuario/Bats_California/Rbats/h4nfs3.dbf")
+
+h4nfs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs4.dbf")
+h4nfs4$LinkID <- "h4nfs4"
+write.dbf(h4nfs4,"C:/Users/usuario/Bats_California/Rbats/h4nfs4.dbf")
+
+h4nfs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs5.dbf")
+h4nfs5$LinkID <- "h4nfs5"
+write.dbf(h4nfs5,"C:/Users/usuario/Bats_California/Rbats/h4nfs5.dbf")
+
+h4nfs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs6.dbf")
+h4nfs6$LinkID <- "h4nfs6"
+write.dbf(h4nfs6,"C:/Users/usuario/Bats_California/Rbats/h4nfs6.dbf")
+
+h4nfs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs7.dbf")
+h4nfs7$LinkID <- "h4nfs7"
+write.dbf(h4nfs7,"C:/Users/usuario/Bats_California/Rbats/h4nfs7.dbf")
+
+h4nfs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs8.dbf")
+h4nfs8$LinkID <- "h4nfs8"
+write.dbf(h4nfs8,"C:/Users/usuario/Bats_California/Rbats/h4nfs8.dbf")
+
+h4nfs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs9.dbf")
+h4nfs9$LinkID <- "h4nfs9"
+write.dbf(h4nfs9,"C:/Users/usuario/Bats_California/Rbats/h4nfs9.dbf")
+
+h4nfs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs10.dbf")
+h4nfs10$LinkID <- "h4nfs10"
+write.dbf(h4nfs10,"C:/Users/usuario/Bats_California/Rbats/h4nfs10.dbf")
+
+h4nfs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs11.dbf")
+h4nfs11$LinkID <- "h4nfs11"
+write.dbf(h4nfs11,"C:/Users/usuario/Bats_California/Rbats/h4nfs11.dbf")
+
+h4nfs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h4nfs12.dbf")
+h4nfs12$LinkID <- "h4nfs12"
+write.dbf(h4nfs12,"C:/Users/usuario/Bats_California/Rbats/h4nfs12.dbf")
+########################################################
+#f5
+h5fs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs1.dbf")
+h5fs1$LinkID <- "h5fs1"
+write.dbf(h5fs1,"C:/Users/usuario/Bats_California/Rbats/h5fs1.dbf")
+
+h5fs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs2.dbf")
+h5fs2$LinkID <- "h5fs2"
+write.dbf(h5fs2,"C:/Users/usuario/Bats_California/Rbats/h5fs2.dbf")
+
+h5fs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs3.dbf")
+h5fs3$LinkID <- "h5fs3"
+write.dbf(h5fs3,"C:/Users/usuario/Bats_California/Rbats/h5fs3.dbf")
+
+h5fs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs4.dbf")
+h5fs4$LinkID <- "h5fs4"
+write.dbf(h5fs4,"C:/Users/usuario/Bats_California/Rbats/h5fs4.dbf")
+
+h5fs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs5.dbf")
+h5fs5$LinkID <- "h5fs5"
+write.dbf(h5fs5,"C:/Users/usuario/Bats_California/Rbats/h5fs5.dbf")
+
+h5fs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs6.dbf")
+h5fs6$LinkID <- "h5fs6"
+write.dbf(h5fs6,"C:/Users/usuario/Bats_California/Rbats/h5fs6.dbf")
+
+h5fs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs7.dbf")
+h5fs7$LinkID <- "h5fs7"
+write.dbf(h5fs7,"C:/Users/usuario/Bats_California/Rbats/h5fs7.dbf")
+
+h5fs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs8.dbf")
+h5fs8$LinkID <- "h5fs8"
+write.dbf(h5fs8,"C:/Users/usuario/Bats_California/Rbats/h5fs8.dbf")
+
+h5fs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs9.dbf")
+h5fs9$LinkID <- "h5fs9"
+write.dbf(h5fs9,"C:/Users/usuario/Bats_California/Rbats/h5fs9.dbf")
+
+h5fs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs10.dbf")
+h5fs10$LinkID <- "h5fs10"
+write.dbf(h5fs10,"C:/Users/usuario/Bats_California/Rbats/h5fs10.dbf")
+
+h5fs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs11.dbf")
+h5fs11$LinkID <- "h5fs11"
+write.dbf(h5fs11,"C:/Users/usuario/Bats_California/Rbats/h5fs11.dbf")
+
+h5fs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5fs12.dbf")
+h5fs12$LinkID <- "h5fs12"
+write.dbf(h5fs12,"C:/Users/usuario/Bats_California/Rbats/h5fs12.dbf")
+
+#####################################################
+#5nf
+h5nfs1 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs1.dbf")
+h5nfs1$LinkID <- "h5nfs1"
+write.dbf(h5nfs1,"C:/Users/usuario/Bats_California/Rbats/h5nfs1.dbf")
+
+h5nfs2 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs2.dbf")
+h5nfs2$LinkID <- "h5nfs2"
+write.dbf(h5nfs2,"C:/Users/usuario/Bats_California/Rbats/h5nfs2.dbf")
+
+h5nfs3 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs3.dbf")
+h5nfs3$LinkID <- "h5nfs3"
+write.dbf(h5nfs3,"C:/Users/usuario/Bats_California/Rbats/h5nfs3.dbf")
+
+h5nfs4 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs4.dbf")
+h5nfs4$LinkID <- "h5nfs4"
+write.dbf(h5nfs4,"C:/Users/usuario/Bats_California/Rbats/h5nfs4.dbf")
+
+h5nfs5 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs5.dbf")
+h5nfs5$LinkID <- "h5nfs5"
+write.dbf(h5nfs5,"C:/Users/usuario/Bats_California/Rbats/h5nfs5.dbf")
+
+h5nfs6 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs6.dbf")
+h5nfs6$LinkID <- "h5nfs6"
+write.dbf(h5nfs6,"C:/Users/usuario/Bats_California/Rbats/h5nfs6.dbf")
+
+h5nfs7 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs7.dbf")
+h5nfs7$LinkID <- "h5nfs7"
+write.dbf(h5nfs7,"C:/Users/usuario/Bats_California/Rbats/h5nfs7.dbf")
+
+h5nfs8 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs8.dbf")
+h5nfs8$LinkID <- "h5nfs8"
+write.dbf(h5nfs8,"C:/Users/usuario/Bats_California/Rbats/h5nfs8.dbf")
+
+h5nfs9 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs9.dbf")
+h5nfs9$LinkID <- "h5nfs9"
+write.dbf(h5nfs9,"C:/Users/usuario/Bats_California/Rbats/h5nfs9.dbf")
+
+h5nfs10 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs10.dbf")
+h5nfs10$LinkID <- "h5nfs10"
+write.dbf(h5nfs10,"C:/Users/usuario/Bats_California/Rbats/h5nfs10.dbf")
+
+h5nfs11 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs11.dbf")
+h5nfs11$LinkID <- "h5nfs11"
+write.dbf(h5nfs11,"C:/Users/usuario/Bats_California/Rbats/h5nfs11.dbf")
+
+h5nfs12 <- read.dbf("C:/Users/usuario/Bats_California/Rbats/h5nfs12.dbf")
+h5nfs12$LinkID <- "h5nfs12"
+write.dbf(h5nfs12,"C:/Users/usuario/Bats_California/Rbats/h5nfs12.dbf")
+
+```
+###Values
+
+```{r, echo=FALSE}
+library(dplyr)
+df.values<-extract(AllLayers1, points1nf, df=TRUE, method="simple")
+df.values<-df.values[,2:6]
+df.values<-cbind(points1nf$x, points1nf$y, df.values,rep("1nf", times=12))
+colnames(df.values)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values$Long=df.values$Long*-1
+
+df.values1f<-extract(AllLayers1, points1f, df=TRUE, method="simple")
+df.values1f<-df.values1f[,2:6]
+df.values1f<-cbind(points1f$x, points1f$y, df.values1f,rep("1f", times=12))
+colnames(df.values1f)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values1f$Long=df.values1f$Long*-1
+
+df.values2nf<-extract(AllLayers1, points2nf, df=TRUE, method="simple")
+df.values2nf<-df.values2nf[,2:6]
+df.values2nf<-cbind(points2nf$x, points2nf$y, df.values2nf,rep("2nf", times=12))
+colnames(df.values2nf)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values2nf$Long=df.values2nf$Long*-1
+
+df.values2f<-extract(AllLayers1, points2f, df=TRUE, method="simple")
+df.values2f<-df.values2f[,2:6]
+df.values2f<-cbind(points2f$x, points2f$y, df.values2f,rep("2f", times=12))
+colnames(df.values2f)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values2f$Long=df.values2f$Long*-1
+
+df.values3nf<-extract(AllLayers1, points3nf, df=TRUE, method="simple")
+df.values3nf<-df.values3nf[,2:6]
+df.values3nf<-cbind(points3nf$x, points3nf$y, df.values3nf,rep("3nf", times=12))
+colnames(df.values3nf)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values3nf$Long=df.values3nf$Long*-1
+
+df.values3f<-extract(AllLayers1, points3f, df=TRUE, method="simple")
+df.values3f<-df.values3f[,2:6]
+df.values3f<-cbind(points3f$x, points3f$y, df.values3f,rep("3f", times=12))
+colnames(df.values3f)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values3f$Long=df.values3f$Long*-1
+
+df.values4nf<-extract(AllLayers1, points4nf, df=TRUE, method="simple")
+df.values4nf<-df.values4nf[,2:6]
+df.values4nf<-cbind(points4nf$x, points4nf$y, df.values4nf,rep("4nf", times=12))
+colnames(df.values4nf)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values4nf$Long=df.values4nf$Long*-1
+
+df.values4f<-extract(AllLayers1, points4f, df=TRUE, method="simple")
+df.values4f<-df.values4f[,2:6]
+df.values4f<-cbind(points4f$x, points4f$y, df.values4f,rep("4f", times=12))
+colnames(df.values4f)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values4f$Long=df.values4f$Long*-1
+
+df.values5nf<-extract(AllLayers1, points5nf, df=TRUE, method="simple")
+df.values5nf<-df.values5nf[,2:6]
+df.values5nf<-cbind(points5nf$x, points5nf$y, df.values5nf,rep("5nf", times=12))
+colnames(df.values5nf)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values5nf$Long=df.values5nf$Long*-1
+
+df.values5f<-extract(AllLayers1, points5f, df=TRUE, method="simple")
+df.values5f<-df.values5f[,2:6]
+df.values5f<-cbind(points5f$x, points5f$y, df.values5f,rep("5f", times=12))
+colnames(df.values5f)<- c("Long", "Lat","Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "ID")
+df.values5f$Long=df.values5f$Long*-1
+
+df.values<-rbind(df.values, df.values1f, df.values2nf, df.values2f, df.values3nf, df.values3f, df.values4nf, df.values4f, df.values5nf, df.values5f)
+
+by_group <- group_by(df.values, ID)
+by_group <- summarise(by_group, mean(Height), mean(Fire_Interval), mean(Distance_to_Road), mean(Veg_Type), mean(Distance_to_Water))
+
+library("knitr", lib.loc="~/R/win-library/3.2")
+
+kable(by_group, col.names=c("ID","Height","Fire Interval", "Distance to Road", "Sage Stage", "Distance to Water"), caption="Mean value for every variable for each ID which combines prior classification (1 to 5) and fire or no fire (f or nf)")
+```
+
+#Simulated sampling Dynamic modeling
+
+```{r, echo=FALSE,message=FALSE}
+library("unmarked", lib.loc="~/R/win-library/3.2")
+```
+
+###First we simulate our detection history for our 120 sites with four primary sampling periods, and three secondary sampling periods each.
+```{r, echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+set.seed(20)
+s1.1f<-rbinom(n=3, size=1, prob=0.8)
+s2.1f<-rbinom(n=3, size=1, prob=0.8)
+s3.1f<-rbinom(n=3, size=1, prob=0.8)
+s4.1f<-rbinom(n=3, size=1, prob=0.8)
+s5.1f<-rbinom(n=3, size=1, prob=0.8)
+s6.1f<-rbinom(n=3, size=1, prob=0.8)
+s7.1f<-rbinom(n=3, size=1, prob=0.8)
+s8.1f<-rbinom(n=3, size=1, prob=0.8)
+s9.1f<-rbinom(n=3, size=1, prob=0.8)
+s10.1f<-rbinom(n=3, size=1, prob=0.8)
+s11.1f<-rbinom(n=3, size=1, prob=0.8)
+s12.1f<-rbinom(n=3, size=1, prob=0.8)
+
+s1.1nf<-rbinom(n=3, size=1, prob=0.85)
+s2.1nf<-rbinom(n=3, size=1, prob=0.85)
+s3.1nf<-rbinom(n=3, size=1, prob=0.85)
+s4.1nf<-rbinom(n=3, size=1, prob=0.85)
+s5.1nf<-rbinom(n=3, size=1, prob=0.85)
+s6.1nf<-rbinom(n=3, size=1, prob=0.85)
+s7.1nf<-rbinom(n=3, size=1, prob=0.85)
+s8.1nf<-rbinom(n=3, size=1, prob=0.85)
+s9.1nf<-rbinom(n=3, size=1, prob=0.85)
+s10.1nf<-rbinom(n=3, size=1, prob=0.85)
+s11.1nf<-rbinom(n=3, size=1, prob=0.85)
+s12.1nf<-rbinom(n=3, size=1, prob=0.85)
+
+s1.2f<-rbinom(n=3, size=1, prob=0.65)
+s2.2f<-rbinom(n=3, size=1, prob=0.65)
+s3.2f<-rbinom(n=3, size=1, prob=0.65)
+s4.2f<-rbinom(n=3, size=1, prob=0.65)
+s5.2f<-rbinom(n=3, size=1, prob=0.65)
+s6.2f<-rbinom(n=3, size=1, prob=0.65)
+s7.2f<-rbinom(n=3, size=1, prob=0.65)
+s8.2f<-rbinom(n=3, size=1, prob=0.65)
+s9.2f<-rbinom(n=3, size=1, prob=0.65)
+s10.2f<-rbinom(n=3, size=1, prob=0.65)
+s11.2f<-rbinom(n=3, size=1, prob=0.65)
+s12.2f<-rbinom(n=3, size=1, prob=0.65)
+
+s1.2nf<-rbinom(n=3, size=1, prob=0.70)
+s2.2nf<-rbinom(n=3, size=1, prob=0.70)
+s3.2nf<-rbinom(n=3, size=1, prob=0.70)
+s4.2nf<-rbinom(n=3, size=1, prob=0.70)
+s5.2nf<-rbinom(n=3, size=1, prob=0.70)
+s6.2nf<-rbinom(n=3, size=1, prob=0.70)
+s7.2nf<-rbinom(n=3, size=1, prob=0.70)
+s8.2nf<-rbinom(n=3, size=1, prob=0.70)
+s9.2nf<-rbinom(n=3, size=1, prob=0.70)
+s10.2nf<-rbinom(n=3, size=1, prob=0.70)
+s11.2nf<-rbinom(n=3, size=1, prob=0.70)
+s12.2nf<-rbinom(n=3, size=1, prob=0.70)
+
+s1.3f<-rbinom(n=3, size=1, prob=0.45)
+s2.3f<-rbinom(n=3, size=1, prob=0.45)
+s3.3f<-rbinom(n=3, size=1, prob=0.45)
+s4.3f<-rbinom(n=3, size=1, prob=0.45)
+s5.3f<-rbinom(n=3, size=1, prob=0.45)
+s6.3f<-rbinom(n=3, size=1, prob=0.45)
+s7.3f<-rbinom(n=3, size=1, prob=0.45)
+s8.3f<-rbinom(n=3, size=1, prob=0.45)
+s9.3f<-rbinom(n=3, size=1, prob=0.45)
+s10.3f<-rbinom(n=3, size=1, prob=0.45)
+s11.3f<-rbinom(n=3, size=1, prob=0.45)
+s12.3f<-rbinom(n=3, size=1, prob=0.45)
+
+s1.3nf<-rbinom(n=3, size=1, prob=0.50)
+s2.3nf<-rbinom(n=3, size=1, prob=0.50)
+s3.3nf<-rbinom(n=3, size=1, prob=0.50)
+s4.3nf<-rbinom(n=3, size=1, prob=0.50)
+s5.3nf<-rbinom(n=3, size=1, prob=0.50)
+s6.3nf<-rbinom(n=3, size=1, prob=0.50)
+s7.3nf<-rbinom(n=3, size=1, prob=0.50)
+s8.3nf<-rbinom(n=3, size=1, prob=0.50)
+s9.3nf<-rbinom(n=3, size=1, prob=0.50)
+s10.3nf<-rbinom(n=3, size=1, prob=0.50)
+s11.3nf<-rbinom(n=3, size=1, prob=0.50)
+s12.3nf<-rbinom(n=3, size=1, prob=0.50)
+
+s1.4f<-rbinom(n=3, size=1, prob=0.25)
+s2.4f<-rbinom(n=3, size=1, prob=0.25)
+s3.4f<-rbinom(n=3, size=1, prob=0.25)
+s4.4f<-rbinom(n=3, size=1, prob=0.25)
+s5.4f<-rbinom(n=3, size=1, prob=0.25)
+s6.4f<-rbinom(n=3, size=1, prob=0.25)
+s7.4f<-rbinom(n=3, size=1, prob=0.25)
+s8.4f<-rbinom(n=3, size=1, prob=0.25)
+s9.4f<-rbinom(n=3, size=1, prob=0.25)
+s10.4f<-rbinom(n=3, size=1, prob=0.25)
+s11.4f<-rbinom(n=3, size=1, prob=0.25)
+s12.4f<-rbinom(n=3, size=1, prob=0.25)
+
+s1.4nf<-rbinom(n=3, size=1, prob=0.30)
+s2.4nf<-rbinom(n=3, size=1, prob=0.30)
+s3.4nf<-rbinom(n=3, size=1, prob=0.30)
+s4.4nf<-rbinom(n=3, size=1, prob=0.30)
+s5.4nf<-rbinom(n=3, size=1, prob=0.30)
+s6.4nf<-rbinom(n=3, size=1, prob=0.30)
+s7.4nf<-rbinom(n=3, size=1, prob=0.30)
+s8.4nf<-rbinom(n=3, size=1, prob=0.30)
+s9.4nf<-rbinom(n=3, size=1, prob=0.30)
+s10.4nf<-rbinom(n=3, size=1, prob=0.30)
+s11.4nf<-rbinom(n=3, size=1, prob=0.30)
+s12.4nf<-rbinom(n=3, size=1, prob=0.30)
+
+s1.5f<-rbinom(n=3, size=1, prob=0.15)
+s2.5f<-rbinom(n=3, size=1, prob=0.15)
+s3.5f<-rbinom(n=3, size=1, prob=0.15)
+s4.5f<-rbinom(n=3, size=1, prob=0.15)
+s5.5f<-rbinom(n=3, size=1, prob=0.15)
+s6.5f<-rbinom(n=3, size=1, prob=0.15)
+s7.5f<-rbinom(n=3, size=1, prob=0.15)
+s8.5f<-rbinom(n=3, size=1, prob=0.15)
+s9.5f<-rbinom(n=3, size=1, prob=0.15)
+s10.5f<-rbinom(n=3, size=1, prob=0.15)
+s11.5f<-rbinom(n=3, size=1, prob=0.15)
+s12.5f<-rbinom(n=3, size=1, prob=0.15)
+
+s1.5nf<-rbinom(n=3, size=1, prob=0.10)
+s2.5nf<-rbinom(n=3, size=1, prob=0.10)
+s3.5nf<-rbinom(n=3, size=1, prob=0.10)
+s4.5nf<-rbinom(n=3, size=1, prob=0.10)
+s5.5nf<-rbinom(n=3, size=1, prob=0.10)
+s6.5nf<-rbinom(n=3, size=1, prob=0.10)
+s7.5nf<-rbinom(n=3, size=1, prob=0.10)
+s8.5nf<-rbinom(n=3, size=1, prob=0.10)
+s9.5nf<-rbinom(n=3, size=1, prob=0.10)
+s10.5nf<-rbinom(n=3, size=1, prob=0.10)
+s11.5nf<-rbinom(n=3, size=1, prob=0.10)
+s12.5nf<-rbinom(n=3, size=1, prob=0.10)
+
+sampling.ocup1<- rbind(s1.1nf,s2.1nf,s3.1nf,s4.1nf,s5.1nf, s6.1nf, s7.1nf,s8.1nf,s9.1nf,s10.1nf,s11.1nf,s12.1nf,s1.1f,s2.1f,s3.1f,s4.1f,s5.1f, s6.1f, s7.1f,s8.1f,s9.1f,s10.1f,s11.1f,s12.1f,s1.2nf,s2.2nf,s3.2nf,s4.2nf,s5.2nf, s6.2nf, s7.2nf,s8.2nf,s9.2nf,s10.2nf,s11.2nf,s12.2nf,s1.2f,s2.2f,s3.2f,s4.2f,s5.2f, s6.2f, s7.2f,s8.2f,s9.2f,s10.2f,s11.2f,s12.2f,s1.3nf,s2.3nf,s3.3nf,s4.3nf,s5.3nf, s6.3nf, s7.3nf,s8.3nf,s9.3nf,s10.3nf,s11.3nf,s12.3nf,s1.3f,s2.3f,s3.3f,s4.3f,s5.3f, s6.3f, s7.3f,s8.3f,s9.3f,s10.3f,s11.3f,s12.3f,s1.4nf,s2.4nf,s3.4nf,s4.4nf,s5.4nf, s6.4nf, s7.4nf,s8.4nf,s9.4nf,s10.4nf,s11.4nf,s12.4nf,s1.4f,s2.4f,s3.4f,s4.4f,s5.4f, s6.4f, s7.4f,s8.4f,s9.4f,s10.4f,s11.4f,s12.4f,s1.5nf,s2.5nf,s3.5nf,s4.5nf,s5.5nf, s6.5nf, s7.5nf,s8.5nf,s9.5nf,s10.5nf,s11.5nf,s12.5nf,s1.5f,s2.5f,s3.5f,s4.5f,s5.5f, s6.5f, s7.5f,s8.5f,s9.5f,s10.5f,s11.5f,s12.5f)
+
+sampling.cov<- df.values[,3:8]
+levels(sampling.cov$ID)<-c("NO","YES","NO","YES","NO","YES","NO","YES","NO","YES")
+
+colnames(sampling.cov)<- c("Height","Fire_Interval", "Distance_to_Road", "Veg_Type", "Distance_to_Water", "Fire")
+
+sim.occu<-unmarkedFrameOccu(y = sampling.ocup1, siteCovs = sampling.cov)
+plot(sim.occu,panel=10)
+model1.occu <- occu(~1 ~1, sim.occu)
+model2.occu <- occu(~Height + Fire_Interval + Distance_to_Road +  Veg_Type +  Distance_to_Water + Fire ~ 1,sim.occu)
+model3.occu <- occu(~Height + Fire_Interval + Distance_to_Road +  Veg_Type +  Distance_to_Water ~ 1,sim.occu)
+
+fmlist<-fitList(Model1=model1.occu,Model2=model2.occu,Model3=model3.occu)
+
+mod.sel<-modSel(fmlist)
+
+new.data<-stack(topo,FireReturnAll,roaddist.r, Vegetation_existing, riverdist.r)
+names(new.data)<-c("Height","Fire_Interval", "Distance_to_Road","Veg_Type", "Distance_to_Water")
+occu.layer <- predict(model3.occu, type = "det", newdata=new.data)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+mod.sel
+result <- dropLayer(occu.layer, c(2:4))
+plot(result, colNA="black", main="Occupancy estimation for bat species X")
+```
+
+```{r,echo=FALSE,results='hide',warning=FALSE}
+model3.occu.rn <- occuRN(~Height + Fire_Interval + Distance_to_Road +  Veg_Type +  Distance_to_Water ~ 1,sim.occu)
+
+new.data<-stack(topo,FireReturnAll,roaddist.r, Vegetation_existing, riverdist.r)
+names(new.data)<-c("Height","Fire_Interval", "Distance_to_Road","Veg_Type", "Distance_to_Water")
+occu.layer.rn <- predict(model3.occu.rn, type = "det", newdata=new.data)
+```
+
+```{r, echo=FALSE}
+plot(occu.layer.rn, main="Estimations of abundance for bat species X")
+result.rn <- dropLayer(occu.layer, c(2:4))
+result.rn.low <- dropLayer(occu.layer, c(1,2,4))
+result.rn.hi<- dropLayer(occu.layer, c(1:3))
+mean<-(getValues(result.rn))
+hi<-(getValues(result.rn.hi))
+low<- (getValues(result.rn.low))
+```
+
+```{r,echo=FALSE}
+abundance<-data.frame(sum(mean, na.rm=TRUE),sum(hi, na.rm=TRUE),sum(low, na.rm=TRUE))
+colnames(abundance)<- c("Abundance estimation", "Estimation High", "Estimation Low")
+kable(abundance, digits=2, caption="Estimation of abundance for the Whole National Forest for Bat Species X with 95% confidence interval estimation")
+```
+
+#APENDIX
+
+##Apendix 1
+
+```{r,echo=FALSE}
+library("knitr", lib.loc="~/R/win-library/3.2")
+kable(df.values, digits=2, col.names=c("Long", "Lat", "Height", "Fire Interval", "Distance to Road", "Vegetation Type", "Distance to Water", "ID"), caption="Values recorded for each selected sampling point toghether with it's ID")
+
+kable(sampling.ocup1, col.names=c("night1", "night2", "night3"), caption="Simulated Sampling values")
+```
+
+
+#Apendix 2 Cuadrants and sampling order
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+x.cuadrant1.2<-c(-120.8678,-122)
+y.cuadrant1.2<-c(39.84342,39.84342)
+x.cuadrant3.4<-c(-120.8678,-119.5)
+y.cuadrant3.4<-c(40,40)
+plot(PNF)
+lines(x.cuadrant1.2,y.cuadrant1.2)
+lines(x.cuadrant3.4,y.cuadrant3.4)
+text(-121.5,40.1,"C1")
+text(-121.5,39.6,"C2")
+text(-120.4,40.1,"C3")
+text(-120.4,39.6,"C4")
+abline(v=-120.8678)
+cuadrants<-c(1,2,3,4)
+set.seed(20)
+cuadrant.order<-c((sample(cuadrants,4,replace=FALSE)),(sample(cuadrants,4,replace=FALSE)),(sample(cuadrants,4,replace=FALSE)),(sample(cuadrants,4,replace=FALSE)))
+Date<-c("08/06/2015","09/06/2015","15/06/2015","16/06/2015","22/06/2015","23/06/2015","29/06/2015","30/06/2015","06/07/2015","07/07/2015","13/07/2015","14/07/2015","20/07/2015","21/07/2015","27/07/2015","28/07/2015")
+library("lubridate", lib.loc="~/R/win-library/3.2")
+cuadrant.order<-cbind(cuadrant.order,Date)
+kable(cuadrant.order, col.names=c("Cuadrant","Date"), caption="Sampling Dates for Cuadrants")
+```
+
+##Cuadrant 1
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+ID<-c("h1fs1","h1fs2","h1fs3","h1fs4","h1fs5","h1fs6","h1fs7", "h1fs8","h1fs9","h1fs10","h1fs11","h1fs12")
+points1f<-cbind(data.frame(points1f[,1:2]),ID)
+library("dplyr", lib.loc="~/R/win-library/3.2")
+cuadrant1.h1f<-filter(points1f,x<= -120.8676)
+cuadrant1.h1f<-filter(cuadrant1.h1f,y> 39.84342)
+
+ID<-c("h1nfs1","h1nfs2","h1nfs3","h1nfs4","h1nfs5","h1nfs6","h1nfs7", "h1nfs8","h1nfs9","h1nfs10","h1nfs11","h1nfs12")
+points1nf<-cbind(data.frame(points1nf[,1:2]),ID)
+cuadrant1.h1nf<-filter(points1nf,x<= -120.8676)
+cuadrant1.h1nf<-filter(cuadrant1.h1nf,y> 39.84342)
+
+ID<-c("h2fs1","h2fs2","h2fs3","h2fs4","h2fs5","h2fs6","h2fs7", "h2fs8","h2fs9","h2fs10","h2fs11","h2fs12")
+points2f<-cbind(data.frame(points2f[,1:2]),ID)
+cuadrant1.h2f<-filter(points2f,x<= -120.8676)
+cuadrant1.h2f<-filter(cuadrant1.h2f,y> 39.84342)
+
+ID<-c("h2nfs1","h2nfs2","h2nfs3","h2nfs4","h2nfs5","h2nfs6","h2nfs7", "h2nfs8","h2nfs9","h2nfs10","h2nfs11","h2nfs12")
+points2nf<-cbind(data.frame(points2nf[,1:2]),ID)
+cuadrant1.h2nf<-filter(points2nf,x<= -120.8676)
+cuadrant1.h2nf<-filter(cuadrant1.h2nf,y> 39.84342)
+
+ID<-c("h3fs1","h3fs2","h3fs3","h3fs4","h3fs5","h3fs6","h3fs7", "h3fs8","h3fs9","h3fs10","h3fs11","h3fs12")
+points3f<-cbind(data.frame(points3f[,1:2]),ID)
+cuadrant1.h3f<-filter(points3f,x<= -120.8676)
+cuadrant1.h3f<-filter(cuadrant1.h3f,y> 39.84342)
+
+ID<-c("h3nfs1","h3nfs2","h3nfs3","h3nfs4","h3nfs5","h3nfs6","h3nfs7", "h3nfs8","h3nfs9","h3nfs10","h3nfs11","h3nfs12")
+points3nf<-cbind(data.frame(points3nf[,1:2]),ID)
+cuadrant1.h3nf<-filter(points3nf,x<= -120.8676)
+cuadrant1.h3nf<-filter(cuadrant1.h3nf,y> 39.84342)
+
+ID<-c("h4fs1","h4fs2","h4fs3","h4fs4","h4fs5","h4fs6","h4fs7", "h4fs8","h4fs9","h4fs10","h4fs11","h4fs12")
+points4f<-cbind(data.frame(points4f[,1:2]),ID)
+cuadrant1.h4f<-filter(points4f,x<= -120.8676)
+cuadrant1.h4f<-filter(cuadrant1.h4f,y> 39.84342)
+
+ID<-c("h4nfs1","h4nfs2","h4nfs3","h4nfs4","h4nfs5","h4nfs6","h4nfs7", "h4nfs8","h4nfs9","h4nfs10","h4nfs11","h4nfs12")
+points4nf<-cbind(data.frame(points4nf[,1:2]),ID)
+cuadrant1.h4nf<-filter(points4nf,x<= -120.8676)
+cuadrant1.h4nf<-filter(cuadrant1.h4nf,y> 39.84342)
+
+ID<-c("h5fs1","h5fs2","h5fs3","h5fs4","h5fs5","h5fs6","h5fs7", "h5fs8","h5fs9","h5fs10","h5fs11","h5fs12")
+points5f<-cbind(data.frame(points5f[,1:2]),ID)
+cuadrant1.h5f<-filter(points5f,x<= -120.8676)
+cuadrant1.h5f<-filter(cuadrant1.h5f,y> 39.84342)
+
+ID<-c("h5nfs1","h5nfs2","h5nfs3","h5nfs4","h5nfs5","h5nfs6","h5nfs7", "h5nfs8","h5nfs9","h5nfs10","h5nfs11","h5nfs12")
+points5nf<-cbind(data.frame(points5nf[,1:2]),ID)
+cuadrant1.h5nf<-filter(points5nf,x<= -120.8676)
+cuadrant1.h5nf<-filter(cuadrant1.h5nf,y> 39.84342)
+
+cuadrant1.final<-rbind(cuadrant1.h1f,cuadrant1.h1nf,cuadrant1.h2f,cuadrant1.h2nf,cuadrant1.h3f,cuadrant1.h3nf,cuadrant1.h4f,cuadrant1.h4nf,cuadrant1.h5f,cuadrant1.h5nf)
+cuadrant1.final<-(cuadrant1.final[,c(1,2,5)])
+```
+
+###Sampling order
+
+```{r, echo=FALSE}
+set.seed(20)
+cuadrant1.final$ID<-as.character(cuadrant1.final$ID)
+order.c1<-sample(cuadrant1.final$ID, size=length(cuadrant1.final$ID),replace=FALSE)
+number.c1<-seq(from=1,to=length(cuadrant1.final$ID), by=1)
+order.c1<-cbind(number.c1,order.c1)
+kable(order.c1, col.names=c("Order","ID"), caption=" order of Sampling points in Cuadrant 1")
+```
+
+##Cuadrant 2
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+ID<-c("h1fs1","h1fs2","h1fs3","h1fs4","h1fs5","h1fs6","h1fs7", "h1fs8","h1fs9","h1fs10","h1fs11","h1fs12")
+points1f<-cbind(data.frame(points1f[,1:2]),ID)
+cuadrant2.h1f<-filter(points1f,x<= -120.8676)
+cuadrant2.h1f<-filter(cuadrant2.h1f,y<= 39.84342)
+
+ID<-c("h1nfs1","h1nfs2","h1nfs3","h1nfs4","h1nfs5","h1nfs6","h1nfs7", "h1nfs8","h1nfs9","h1nfs10","h1nfs11","h1nfs12")
+points1nf<-cbind(data.frame(points1nf[,1:2]),ID)
+cuadrant2.h1nf<-filter(points1nf,x<= -120.8676)
+cuadrant2.h1nf<-filter(cuadrant2.h1nf,y<= 39.84342)
+
+ID<-c("h2fs1","h2fs2","h2fs3","h2fs4","h2fs5","h2fs6","h2fs7", "h2fs8","h2fs9","h2fs10","h2fs11","h2fs12")
+points2f<-cbind(data.frame(points2f[,1:2]),ID)
+cuadrant2.h2f<-filter(points2f,x<= -120.8676)
+cuadrant2.h2f<-filter(cuadrant2.h2f,y<= 39.84342)
+
+ID<-c("h2nfs1","h2nfs2","h2nfs3","h2nfs4","h2nfs5","h2nfs6","h2nfs7", "h2nfs8","h2nfs9","h2nfs10","h2nfs11","h2nfs12")
+points2nf<-cbind(data.frame(points2nf[,1:2]),ID)
+cuadrant2.h2nf<-filter(points2nf,x<= -120.8676)
+cuadrant2.h2nf<-filter(cuadrant2.h2nf,y<= 39.84342)
+
+ID<-c("h3fs1","h3fs2","h3fs3","h3fs4","h3fs5","h3fs6","h3fs7", "h3fs8","h3fs9","h3fs10","h3fs11","h3fs12")
+points3f<-cbind(data.frame(points3f[,1:2]),ID)
+cuadrant2.h3f<-filter(points3f,x<= -120.8676)
+cuadrant2.h3f<-filter(cuadrant2.h3f,y<= 39.84342)
+
+ID<-c("h3nfs1","h3nfs2","h3nfs3","h3nfs4","h3nfs5","h3nfs6","h3nfs7", "h3nfs8","h3nfs9","h3nfs10","h3nfs11","h3nfs12")
+points3nf<-cbind(data.frame(points3nf[,1:2]),ID)
+cuadrant2.h3nf<-filter(points3nf,x<= -120.8676)
+cuadrant2.h3nf<-filter(cuadrant2.h3nf,y<= 39.84342)
+
+ID<-c("h4fs1","h4fs2","h4fs3","h4fs4","h4fs5","h4fs6","h4fs7", "h4fs8","h4fs9","h4fs10","h4fs11","h4fs12")
+points4f<-cbind(data.frame(points4f[,1:2]),ID)
+cuadrant2.h4f<-filter(points4f,x<= -120.8676)
+cuadrant2.h4f<-filter(cuadrant2.h4f,y<= 39.84342)
+
+ID<-c("h4nfs1","h4nfs2","h4nfs3","h4nfs4","h4nfs5","h4nfs6","h4nfs7", "h4nfs8","h4nfs9","h4nfs10","h4nfs11","h4nfs12")
+points4nf<-cbind(data.frame(points4nf[,1:2]),ID)
+cuadrant2.h4nf<-filter(points4nf,x<= -120.8676)
+cuadrant2.h4nf<-filter(cuadrant2.h4nf,y<= 39.84342)
+
+ID<-c("h5fs1","h5fs2","h5fs3","h5fs4","h5fs5","h5fs6","h5fs7", "h5fs8","h5fs9","h5fs10","h5fs11","h5fs12")
+points5f<-cbind(data.frame(points5f[,1:2]),ID)
+cuadrant2.h5f<-filter(points5f,x<= -120.8676)
+cuadrant2.h5f<-filter(cuadrant2.h5f,y<= 39.84342)
+
+ID<-c("h5nfs1","h5nfs2","h5nfs3","h5nfs4","h5nfs5","h5nfs6","h5nfs7", "h5nfs8","h5nfs9","h5nfs10","h5nfs11","h5nfs12")
+points5nf<-cbind(data.frame(points5nf[,1:2]),ID)
+cuadrant2.h5nf<-filter(points5nf,x<= -120.8676)
+cuadrant2.h5nf<-filter(cuadrant1.h5nf,y<= 39.84342)
+
+cuadrant2.final<-rbind(cuadrant2.h1f,cuadrant2.h1nf,cuadrant2.h2f,cuadrant2.h2nf,cuadrant2.h3f,cuadrant2.h3nf,cuadrant2.h4f,cuadrant2.h4nf,cuadrant2.h5f,cuadrant2.h5nf)
+```
+
+###Sampling order
+
+```{r, echo=FALSE}
+set.seed(20)
+cuadrant2.final$ID<-as.character(cuadrant2.final$ID)
+order.c2<-sample(cuadrant2.final$ID, size=length(cuadrant2.final$ID),replace=FALSE)
+number.c2<-seq(from=1,to=length(cuadrant2.final$ID), by=1)
+order.c2<-cbind(number.c2,order.c2)
+kable(order.c2, col.names=c("Order","ID"), caption=" order of Sampling points in Cuadrant 2")
+```
+
+##Cuadrant 3
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+ID<-c("h1fs1","h1fs2","h1fs3","h1fs4","h1fs5","h1fs6","h1fs7", "h1fs8","h1fs9","h1fs10","h1fs11","h1fs12")
+points1f<-cbind(data.frame(points1f[,1:2]),ID)
+cuadrant3.h1f<-filter(points1f,x> -120.8676)
+cuadrant3.h1f<-filter(cuadrant3.h1f,y > 40)
+
+ID<-c("h1nfs1","h1nfs2","h1nfs3","h1nfs4","h1nfs5","h1nfs6","h1nfs7", "h1nfs8","h1nfs9","h1nfs10","h1nfs11","h1nfs12")
+points1nf<-cbind(data.frame(points1nf[,1:2]),ID)
+cuadrant3.h1nf<-filter(points1nf,x > -120.8676)
+cuadrant3.h1nf<-filter(cuadrant3.h1nf,y > 40)
+
+ID<-c("h2fs1","h2fs2","h2fs3","h2fs4","h2fs5","h2fs6","h2fs7", "h2fs8","h2fs9","h2fs10","h2fs11","h2fs12")
+points2f<-cbind(data.frame(points2f[,1:2]),ID)
+cuadrant3.h2f<-filter(points2f,x> -120.8676)
+cuadrant3.h2f<-filter(cuadrant3.h2f,y> 40)
+
+ID<-c("h2nfs1","h2nfs2","h2nfs3","h2nfs4","h2nfs5","h2nfs6","h2nfs7", "h2nfs8","h2nfs9","h2nfs10","h2nfs11","h2nfs12")
+points2nf<-cbind(data.frame(points2nf[,1:2]),ID)
+cuadrant3.h2nf<-filter(points2nf,x > -120.8676)
+cuadrant3.h2nf<-filter(cuadrant3.h2nf,y> 40)
+
+ID<-c("h3fs1","h3fs2","h3fs3","h3fs4","h3fs5","h3fs6","h3fs7", "h3fs8","h3fs9","h3fs10","h3fs11","h3fs12")
+points3f<-cbind(data.frame(points3f[,1:2]),ID)
+cuadrant3.h3f<-filter(points3f,x> -120.8676)
+cuadrant3.h3f<-filter(cuadrant3.h3f,y> 40)
+
+ID<-c("h3nfs1","h3nfs2","h3nfs3","h3nfs4","h3nfs5","h3nfs6","h3nfs7", "h3nfs8","h3nfs9","h3nfs10","h3nfs11","h3nfs12")
+points3nf<-cbind(data.frame(points3nf[,1:2]),ID)
+cuadrant3.h3nf<-filter(points3nf,x> -120.8676)
+cuadrant3.h3nf<-filter(cuadrant3.h3nf,y> 40)
+
+ID<-c("h4fs1","h4fs2","h4fs3","h4fs4","h4fs5","h4fs6","h4fs7", "h4fs8","h4fs9","h4fs10","h4fs11","h4fs12")
+points4f<-cbind(data.frame(points4f[,1:2]),ID)
+cuadrant3.h4f<-filter(points4f,x> -120.8676)
+cuadrant3.h4f<-filter(cuadrant3.h4f,y> 40)
+
+ID<-c("h4nfs1","h4nfs2","h4nfs3","h4nfs4","h4nfs5","h4nfs6","h4nfs7", "h4nfs8","h4nfs9","h4nfs10","h4nfs11","h4nfs12")
+points4nf<-cbind(data.frame(points4nf[,1:2]),ID)
+cuadrant3.h4nf<-filter(points4nf,x> -120.8676)
+cuadrant3.h4nf<-filter(cuadrant3.h4nf,y> 40)
+
+ID<-c("h5fs1","h5fs2","h5fs3","h5fs4","h5fs5","h5fs6","h5fs7", "h5fs8","h5fs9","h5fs10","h5fs11","h5fs12")
+points5f<-cbind(data.frame(points5f[,1:2]),ID)
+cuadrant3.h5f<-filter(points5f,x> -120.8676)
+cuadrant3.h5f<-filter(cuadrant3.h5f,y> 40)
+
+ID<-c("h5nfs1","h5nfs2","h5nfs3","h5nfs4","h5nfs5","h5nfs6","h5nfs7", "h5nfs8","h5nfs9","h5nfs10","h5nfs11","h5nfs12")
+points5nf<-cbind(data.frame(points5nf[,1:2]),ID)
+cuadrant3.h5nf<-filter(points5nf,x> -120.8676)
+cuadrant3.h5nf<-filter(cuadrant3.h5nf,y> 40)
+
+cuadrant3.final<-rbind(cuadrant3.h1f,cuadrant3.h1nf,cuadrant3.h2f,cuadrant3.h2nf,cuadrant3.h3f,cuadrant3.h3nf,cuadrant3.h4f,cuadrant3.h4nf,cuadrant3.h5f,cuadrant3.h5nf)
+```
+
+###Sampling order
+
+```{r, echo=FALSE}
+set.seed(20)
+cuadrant3.final$ID<-as.character(cuadrant3.final$ID)
+order.c3<-sample(cuadrant3.final$ID, size=length(cuadrant3.final$ID),replace=FALSE)
+number.c3<-seq(from=1,to=length(cuadrant3.final$ID), by=1)
+order.c3<-cbind(number.c3,order.c3)
+kable(order.c3, col.names=c("Order","ID"), caption=" order of Sampling points in Cuadrant 3")
+```
+
+##Cuadrant4
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+ID<-c("h1fs1","h1fs2","h1fs3","h1fs4","h1fs5","h1fs6","h1fs7", "h1fs8","h1fs9","h1fs10","h1fs11","h1fs12")
+points1f<-cbind(data.frame(points1f[,1:2]),ID)
+cuadrant4.h1f<-filter(points1f,x> -120.8676)
+cuadrant4.h1f<-filter(cuadrant4.h1f,y <= 40)
+
+ID<-c("h1nfs1","h1nfs2","h1nfs3","h1nfs4","h1nfs5","h1nfs6","h1nfs7", "h1nfs8","h1nfs9","h1nfs10","h1nfs11","h1nfs12")
+points1nf<-cbind(data.frame(points1nf[,1:2]),ID)
+cuadrant4.h1nf<-filter(points1nf,x > -120.8676)
+cuadrant4.h1nf<-filter(cuadrant4.h1nf,y <= 40)
+
+ID<-c("h2fs1","h2fs2","h2fs3","h2fs4","h2fs5","h2fs6","h2fs7", "h2fs8","h2fs9","h2fs10","h2fs11","h2fs12")
+points2f<-cbind(data.frame(points2f[,1:2]),ID)
+cuadrant4.h2f<-filter(points2f,x> -120.8676)
+cuadrant4.h2f<-filter(cuadrant4.h2f,y<= 40)
+
+ID<-c("h2nfs1","h2nfs2","h2nfs3","h2nfs4","h2nfs5","h2nfs6","h2nfs7", "h2nfs8","h2nfs9","h2nfs10","h2nfs11","h2nfs12")
+points2nf<-cbind(data.frame(points2nf[,1:2]),ID)
+cuadrant4.h2nf<-filter(points2nf,x > -120.8676)
+cuadrant4.h2nf<-filter(cuadrant4.h2nf,y<= 40)
+
+ID<-c("h3fs1","h3fs2","h3fs3","h3fs4","h3fs5","h3fs6","h3fs7", "h3fs8","h3fs9","h3fs10","h3fs11","h3fs12")
+points3f<-cbind(data.frame(points3f[,1:2]),ID)
+cuadrant4.h3f<-filter(points3f,x> -120.8676)
+cuadrant4.h3f<-filter(cuadrant4.h3f,y<= 40)
+
+ID<-c("h3nfs1","h3nfs2","h3nfs3","h3nfs4","h3nfs5","h3nfs6","h3nfs7", "h3nfs8","h3nfs9","h3nfs10","h3nfs11","h3nfs12")
+points3nf<-cbind(data.frame(points3nf[,1:2]),ID)
+cuadrant4.h3nf<-filter(points3nf,x> -120.8676)
+cuadrant4.h3nf<-filter(cuadrant4.h3nf,y<= 40)
+
+ID<-c("h4fs1","h4fs2","h4fs3","h4fs4","h4fs5","h4fs6","h4fs7", "h4fs8","h4fs9","h4fs10","h4fs11","h4fs12")
+points4f<-cbind(data.frame(points4f[,1:2]),ID)
+cuadrant4.h4f<-filter(points4f,x> -120.8676)
+cuadrant4.h4f<-filter(cuadrant4.h4f,y<= 40)
+
+ID<-c("h4nfs1","h4nfs2","h4nfs3","h4nfs4","h4nfs5","h4nfs6","h4nfs7", "h4nfs8","h4nfs9","h4nfs10","h4nfs11","h4nfs12")
+points4nf<-cbind(data.frame(points4nf[,1:2]),ID)
+cuadrant4.h4nf<-filter(points4nf,x> -120.8676)
+cuadrant4.h4nf<-filter(cuadrant4.h4nf,y<= 40)
+
+ID<-c("h5fs1","h5fs2","h5fs3","h5fs4","h5fs5","h5fs6","h5fs7", "h5fs8","h5fs9","h5fs10","h5fs11","h5fs12")
+points5f<-cbind(data.frame(points5f[,1:2]),ID)
+cuadrant4.h5f<-filter(points5f,x> -120.8676)
+cuadrant4.h5f<-filter(cuadrant4.h5f,y<= 40)
+
+ID<-c("h5nfs1","h5nfs2","h5nfs3","h5nfs4","h5nfs5","h5nfs6","h5nfs7", "h5nfs8","h5nfs9","h5nfs10","h5nfs11","h5nfs12")
+points5nf<-cbind(data.frame(points5nf[,1:2]),ID)
+cuadrant4.h5nf<-filter(points5nf,x> -120.8676)
+cuadrant4.h5nf<-filter(cuadrant4.h5nf,y<= 40)
+
+cuadrant4.final<-rbind(cuadrant4.h1f,cuadrant4.h1nf,cuadrant4.h2f,cuadrant4.h2nf,cuadrant4.h3f,cuadrant4.h3nf,cuadrant4.h4f,cuadrant4.h4nf,cuadrant4.h5f,cuadrant4.h5nf)
+```
+
+###Sampling order
+
+```{r, echo=FALSE}
+set.seed(20)
+cuadrant4.final$ID<-as.character(cuadrant4.final$ID)
+order.c4<-sample(cuadrant4.final$ID, size=length(cuadrant4.final$ID),replace=FALSE)
+number.c4<-seq(from=1,to=length(cuadrant4.final$ID), by=1)
+order.c4<-cbind(number.c4,order.c4)
+kable(order.c4, col.names=c("Order","ID"), caption=" order of Sampling points in Cuadrant 4")
+```

@@ -1,0 +1,310 @@
+---
+title: "niche modelling bats multi"
+author: "Derek Corcoran"
+date: "Thursday, September 17, 2015"
+output: pdf_document
+---
+
+# Example using the little brown bat
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE,results='hide'}
+#first load libraries
+library(raster)
+library(rasterVis)
+library(maps)
+library(maptools)
+library(rgdal)
+library (dplyr)
+library(stargazer)
+library(xtable)
+library(MuMIn)
+library(biomod2)
+```
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide', cache=TRUE}
+PNF<- readGDAL("C:/Users/usuario/Bats_California/layers/PNF.asc")
+PNF<-raster (PNF)
+bc <- readGDAL("C:/Users/usuario/Bats_California/layers/burn_canopy.asc")
+bc<-raster (bc)
+bb <- readGDAL("C:/Users/usuario/Bats_California/layers/burn_basal.asc")
+bb<-raster (bb)
+bs <- readGDAL("C:/Users/usuario/Bats_California/layers/burn_severity.asc")
+bs<-raster (bs)
+topo <- readGDAL("C:/Users/usuario/Bats_California/layers/plumastopo.asc")
+topo<-raster (topo)
+Vegetation_existing <- readGDAL("C:/Users/usuario/Bats_California/layers/VegTypeAll.asc")
+Vegetation_existing<-raster (Vegetation_existing)
+FireReturnAll <- readGDAL("C:/Users/usuario/Bats_California/layers/FireReturnAll.asc")
+FireReturnAll<-raster (FireReturnAll)
+FireHistory <- readGDAL("C:/Users/usuario/Bats_California/layers/FireHistory.asc")
+FireHistory<-raster (FireHistory)
+SeralStage <-readGDAL("C:/Users/usuario/Bats_California/layers/SeralStage.asc")
+SeralStage<-raster (SeralStage)
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE, cache=TRUE}
+df.bb <- data.frame(id=c(NA,1,2,3,4,5,6,7,255), v=c(0,1,2,3,4,5,6,7,8))#Change outlayers and extract NAs 
+
+bb1 <- subs(bb, df.bb,subswithNA=FALSE)
+df.bs <- data.frame(id=c(NA,1,2,3,4,255), v=c(0,1,2,3,4,5))
+bs1 <- subs(bs, df.bs,subswithNA=FALSE)
+df.bc <- data.frame(id=c(NA,1,2,3,4,5,255), v=c(0,1,2,3,4,5,6))
+bc1 <- subs(bc, df.bc,subswithNA=FALSE)
+lidar.limit <- readOGR(dsn="C:/Users/usuario/Bats_California/layers",layer="LiDAR_Boundary")
+lidar.limit <- spTransform(lidar.limit, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE, cache=TRUE}
+bb<-projectRaster(bb1, PNF)
+bs<-projectRaster(bs1, PNF)
+bc<-projectRaster(bc1, PNF)
+Vegetation_existing<-projectRaster(Vegetation_existing, PNF)
+FireReturnAll<-projectRaster(FireReturnAll, PNF)
+FireHistory <-projectRaster(FireHistory, PNF)
+SeralStage<- projectRaster(SeralStage,PNF)
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE, cache=TRUE}
+bc<-resample(bc, PNF)
+bb<-resample(bb, PNF)
+bs<-resample(bs, PNF)
+Vegetation_existing<-resample(Vegetation_existing, PNF, method="ngb")
+FireReturnAll<-resample(FireReturnAll, PNF)
+FireHistory<-resample(FireHistory, PNF)
+topo<-resample(topo,PNF)
+SeralStage <- resample (SeralStage, PNF, method="ngb")
+```
+
+```{r, echo=FALSE, results='hide',warning=FALSE, cache=TRUE}
+Vegetation_existing<-ratify(Vegetation_existing, count=TRUE)
+```
+
+
+```{r,echo=FALSE,warning=FALSE, cache=TRUE}
+FireReturnAll[FireReturnAll < 0] <- NA
+```
+
+```{r, echo=FALSE, results='hide', warning=FALSE, cache=TRUE}
+roads.v <- readOGR(dsn="C:/Users/usuario/Bats_California/layers",layer="Roads")
+roads.v <- spTransform(roads.v, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+template <- PNF  # this will be the template
+template[] <- NA  # assigns all values as NA
+roads.r <- rasterize(roads.v, template, field=1)
+```
+
+```{r,echo=FALSE, results='hide', cache=TRUE}
+roaddist.r <- distance(roads.r)
+roaddist.r<- roaddist.r*PNF
+
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,results='hide', cache=TRUE}
+rivers <- readOGR(dsn="C:/Users/usuario/Bats_California/layers",layer="NHDFlowline")
+rivers <- spTransform(rivers, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+template2 <- PNF  # this will be the template
+template2[] <- NA  # assigns all values as NA
+rivers.r <- rasterize(rivers, template2, field=1)
+riverdist.r <- distance(rivers.r)
+riverdist.r<- riverdist.r*PNF
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+Predictors <-stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb)
+names(Predictors)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal")
+NewExtent <- extent(-121.6, -120.2, 39.5, 40.3)
+
+Predictors2 <- stack(crop(Predictors, NewExtent))
+```
+
+
+```{r, echo=FALSE, cache=TRUE}
+BatOccu <- read.csv("~/Missouri post doc/Results/BatOccu.csv")
+BatOccu[is.na(BatOccu)] <- 0
+
+```
+
+```{r, cache=TRUE, echo=FALSE}
+Batniche<- transmute(BatOccu, Myyu = Myyu1 + Myyu2 + Myyu3, Myca = Myca1 + Myca2 + Myca3, Myci= Myci1 + Myci2 + Myci3, Myvo= Myvo1 + Myvo2 + Myvo3, Mylu = Mylu1 + Mylu2 + Mylu3, Pahe = Pahe1 + Pahe2 + Pahe3, Labl = Labl1 + Labl2 + Labl3, Myev = Myev1 + Myev2 + Myev3, Anpa = Anpa1 + Anpa2 + Anpa3, Epfu= Epfu1 + Epfu2 + Epfu3, Lano = Lano1 + Lano2 + Lano3, Myth = Myth1 + Myth2 + Myth3, Tabr = Tabr1 + Tabr2 + Tabr3, Laci= Laci1 + Laci2 + Laci3, Coto = Coto1+ Coto2 + Coto3, Euma = Euma1 + Euma2 + Euma3, Eupe = Eupe1 + Eupe2 + Eupe3)
+
+Batniche <- as.matrix(Batniche)
+Batniche[Batniche > 1] <- 1
+Batniche <- as.data.frame(Batniche)
+
+colSums(Batniche)
+```
+
+```{r,cache=TRUE, echo=FALSE}
+geopredict2 <- read.csv("C:/Users/usuario/Bats_California/Rbats/geopredict2.csv")
+Batniche <- cbind(geopredict2[,3:4], Batniche)
+```
+
+```{r,cache=TRUE, echo=FALSE}
+myRespName <- 'Little Brown Bat'
+myResp <- as.numeric(Batniche[,7])
+myRespXY <- Batniche[,c(2,1)]
+plot(PNF)
+points(myRespXY)
+BatBiomodData <- BIOMOD_FormatingData(resp.var = myResp, expl.var = Predictors2, resp.xy = myRespXY,resp.name = myRespName)                           
+                                    
+```
+
+
+```{r,cache=TRUE, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+# 2. Defining Models Options using default options.
+myBiomodOption <- BIOMOD_ModelingOptions()
+# 3. Computing the models
+myBiomodModelOut <- BIOMOD_Modeling(
+BatBiomodData,
+models = c('SRE','CTA','RF','MARS','FDA'),
+models.options = myBiomodOption,
+NbRunEval=3,
+DataSplit=80,
+Prevalence=0.5,
+VarImport=3,
+models.eval.meth = c('TSS','ROC'),
+SaveObj = TRUE,
+rescal.all.models = TRUE,
+do.full.models = FALSE,
+modeling.id = paste(myRespName,"FirstModeling",sep=""))
+```
+
+
+```{r, echo=FALSE, cache=TRUE, results='hide'}
+# get all models evaluation
+myBiomodModelEval <- get_evaluations(myBiomodModelOut)
+# print the dimnames of this object
+dimnames(myBiomodModelEval)
+# let's print the TSS scores of Random Forest
+myBiomodModelEval["TSS","Testing.data","RF",,]
+# let's print the ROC scores of all selected models
+myBiomodModelEval["ROC","Testing.data",,,]
+# print variable importances
+get_variables_importance(myBiomodModelOut)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+##selection of actual good models
+myBiomodEM <- BIOMOD_EnsembleModeling(modeling.output = myBiomodModelOut,chosen.models = 'all', em.by='all',
+eval.metric = c('TSS'),eval.metric.quality.threshold = c(0.4), prob.mean = T, prob.cv = T, prob.ci = T, prob.ci.alpha = 0.05, prob.median = T, committee.averaging = T, prob.mean.weight = T, prob.mean.weight.decay = 'proportional' )
+# print summary
+# get evaluation scores
+get_evaluations(myBiomodEM)
+```
+
+##Projection of best individual model
+
+```{r, echo=FALSE, cache=TRUE, message=FALSE, warning=FALSE}
+myBiomodProj <- BIOMOD_Projection(
+modeling.output = myBiomodModelOut,
+new.env = Predictors,
+proj.name = 'current',
+selected.models = 'all',
+binary.meth = 'TSS',
+compress = 'xz',
+clamping.mask = F,
+output.format = '.grd')
+#make some plots sub-selected by str.grep argument
+myCurrentProj <- get_predictions(myBiomodProj)
+myCurrentProj
+```
+
+```{r,echo=FALSE, cache=TRUE}
+plot(myCurrentProj$Little.Brown.Bat_AllData_RUN2_RF)
+```
+
+##Ensemble models
+
+```{r, echo=FALSE, cache=TRUE}
+myBiomodEF <- BIOMOD_EnsembleForecasting(
+EM.output = myBiomodEM,
+projection.output = myBiomodProj)
+# reduce layer names for plotting convegences
+plot(myBiomodEF)
+```
+
+#Multispecies models
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE, cache=TRUE}
+# define the species of interest
+sp.names <- c("Myyu", "Myca","Myci", "Myvo", "Mylu", "Labl", "Anpa")
+# loop on species == applying the same functions to each species
+for(sp.n in sp.names){
+myRespName = sp.n
+cat('\n',myRespName,'modeling...')
+### definition of data
+## i.e keep only the column of our species
+myResp <- as.numeric(Batniche [,myRespName])
+myRespCoord = Batniche [c('LONG','LAT')]
+### Initialisation
+myBiomodData <- BIOMOD_FormatingData(resp.var = myResp,
+expl.var = Predictors2 ,
+resp.xy = myRespCoord,
+resp.name = myRespName)
+### Options definition
+myBiomodOption <- BIOMOD_ModelingOptions()
+### Modelling
+myBiomodModelOut <- BIOMOD_Modeling(
+myBiomodData,
+models = c('SRE','CTA','RF','MARS','FDA'),
+models.options = myBiomodOption,
+NbRunEval=3,
+DataSplit=80,
+Prevalence=0.5,
+VarImport=3,
+models.eval.meth = c('TSS','ROC'),
+SaveObj = TRUE,
+rescal.all.models = TRUE,
+do.full.models = FALSE,
+modeling.id = paste(myRespName,"FirstModeling",sep=""))
+### save models evaluation scores and variables importance on hard drive
+capture.output(get_evaluations(myBiomodModelOut),
+file=file.path(myRespName,
+paste(myRespName,"_formal_models_evaluation.txt", sep="")))
+capture.output(get_variables_importance(myBiomodModelOut),
+file=file.path(myRespName,
+paste(myRespName,"_formal_models_variables_importance.txt", sep="")))
+### Building ensemble-models
+myBiomodEM <- BIOMOD_EnsembleModeling(
+modeling.output = myBiomodModelOut,
+chosen.models = 'all',
+em.by='all',
+eval.metric = c('TSS'),
+eval.metric.quality.threshold = c(0.5),
+prob.mean = T,
+prob.cv = T,
+prob.ci = T,
+prob.ci.alpha = 0.05,
+prob.median = T,
+committee.averaging = T,
+prob.mean.weight = T,
+prob.mean.weight.decay = 'proportional' )
+### Make projections on current variable
+myBiomodProj <- BIOMOD_Projection(
+modeling.output = myBiomodModelOut,
+new.env = Predictors ,
+proj.name = 'current',
+selected.models = 'all',
+binary.meth = 'TSS',
+compress = 'xz',
+clamping.mask = F,
+output.format = '.grd')
+### Make ensemble-models projections on current variable
+myBiomodEF <- BIOMOD_EnsembleForecasting(
+projection.output = myBiomodProj,
+EM.output = myBiomodEM)
+}
+```
+
+
+```{r, echo=FALSE}
+# define a mask of studied
+alphaMap <- reclassify(PNF, c(-Inf,Inf,0))
+# # add all other species map
+for(sp.n in sp.names){
+# add layer
+alphaMap <-alphaMap +subset(stack(file.path(sp.n,"proj_current",paste("proj_current_",sp.n,"_TSSbin.grd", sep=""))), 1)
+}
+plot(alphaMap, main = expression( paste(alpha, "-diversity based on",
+" Total Consensus Niche Modeling")))
+```

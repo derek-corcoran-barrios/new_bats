@@ -1,0 +1,1295 @@
+---
+title: "ResultsBats"
+author: "Derek Corcoran"
+date: "August 21, 2015"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=FALSE)
+```
+
+#Abstract
+
+This webpage will show the results of a bat survey study done in the Plumas National Forest in North California. The objective of this study is to determine the distribution of the different species of bats within the park. In order to do that we have performed occupancy models for the species present in the park. The results of this models will be shown as maps showing the probability of occurence of bats in each point, that is, if you see a value of 1, there is a 100% chance of finding a bat in that point, if there is a value of 0 there is 0% chance of finding that specie in that point, if there is a value of 0.5 there is a 50% chance of finding that specie in that point.
+
+Another result
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE,results='hide'}
+#first load libraries
+library("raster", lib.loc="~/R/win-library/3.2")
+library("rasterVis", lib.loc="~/R/win-library/3.2")
+library("maps", lib.loc="~/R/win-library/3.2")
+library("maptools", lib.loc="~/R/win-library/3.2")
+library("rgdal", lib.loc="~/R/win-library/3.2")
+library("latticeExtra", lib.loc="~/R/win-library/3.2")
+library("dplyr", lib.loc="~/R/win-library/3.2")
+library("knitr", lib.loc="~/R/win-library/3.2")
+library("unmarked", lib.loc="~/R/win-library/3.2")
+library("lubridate", lib.loc="~/R/win-library/3.2")
+library("jpeg", lib.loc="~/R/win-library/3.2")
+library(stargazer)
+library(xtable)
+library(MuMIn)
+```
+
+#Data collection
+
+There are three different types of data collected in this study:
+
+- *Vegetation plot data* collected in the field in order to chatacterize the habitat.
+
+- *Data adquired via teledetection* this are data maps provided by the forest service and used directly or prosseced in a way that we can use it.
+
+- *Bat species presence* the species present at each site recorded using de Petterson d500X bat detectors and analized using the sonobat software
+
+###Vegetation plot
+
+This data was collected by the Feather River College interns Jamie Buchanan, Emma Deal and Hillary Wall. All of the sampling was centered in the place were the bat detector was going to be placed. Then using a metric tape, 50 meters were measured to the North, East, West and South and several measurments were taken at each of this points.
+
+```{r, echo=FALSE}
+x1<-c(-50:50)
+x2<-rep(0, times=101)
+y1<-rep(0, times=101)
+y2<-c(-50:50)
+x=c(x1,x2)
+y=c(y1,y2)
+plot(x,y,type="n", asp=1/1, xlab="Meters W-E", ylab="Meters N-S", bty="n", main="Schematic drawing of the sampling area")
+lines(x1,y1)
+lines(x2,y2)
+points(x2,y2, pch=3)
+points(x1,y1, pch=3)
+```
+
+they measured the canopy cover, land cover area, basal area and recorded the temperature and humidity for each site.
+
+####Canopy cover
+
+The canopy cover is the percentage of overhead sky covered with canopy this is measured with a grided concave mirror. These measurements were taken at each of the four cardinal points, and at the center of the plot. 
+
+
+####Land cover area
+
+For each meter in the 50 meters from the center to each cardinal point, the cover was classified as woody growth, herbaceous growth, Grass, Naked Soil, Rocky Scree, Down wood or leaf Litter and the percerntage of land cover area for each cover type was calculated. 
+
+####Basal area
+
+Basal area is the square meters per hectare covered by the trunk of a tree within the plot, this was measured using a diametrical tape and a wedge prism.
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide', cache=TRUE}
+PNF<- readGDAL("C:/Users/usuario/Bats_California/layers/PNF.asc")
+PNF<-raster (PNF)
+bc <- readGDAL("C:/Users/usuario/Bats_California/layers/burn_canopy.asc")
+bc<-raster (bc)
+bb <- readGDAL("C:/Users/usuario/Bats_California/layers/burn_basal.asc")
+bb<-raster (bb)
+bs <- readGDAL("C:/Users/usuario/Bats_California/layers/burn_severity.asc")
+bs<-raster (bs)
+topo <- readGDAL("C:/Users/usuario/Bats_California/layers/plumastopo.asc")
+topo<-raster (topo)
+Vegetation_existing <- readGDAL("C:/Users/usuario/Bats_California/layers/VegTypeAll.asc")
+Vegetation_existing<-raster (Vegetation_existing)
+FireReturnAll <- readGDAL("C:/Users/usuario/Bats_California/layers/FireReturnAll.asc")
+FireReturnAll<-raster (FireReturnAll)
+TreatmentsStorrie <- readGDAL("C:/Users/usuario/Bats_California/layers/TreatmentsStorrie.asc")
+TreatmentsStorrie<-raster (TreatmentsStorrie)
+FireHistory <- readGDAL("C:/Users/usuario/Bats_California/layers/FireHistory.asc")
+FireHistory<-raster (FireHistory)
+Goshawkforag <- readGDAL("C:/Users/usuario/Bats_California/layers/Goshawkforag.asc")
+Goshawkforag<-raster (Goshawkforag)
+GoshawkNEST <- readGDAL("C:/Users/usuario/Bats_California/layers/GoshawkNEST.asc")
+GoshawkNEST<-raster (GoshawkNEST)
+MartenHabit <- readGDAL("C:/Users/usuario/Bats_California/layers/MartenHabit.asc")
+MartenHabit<-raster (MartenHabit)
+SeralStage <-readGDAL("C:/Users/usuario/Bats_California/layers/SeralStage.asc")
+SeralStage<-raster (SeralStage)
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE, cache=TRUE}
+df.bb <- data.frame(id=c(NA,1,2,3,4,5,6,7,255), v=c(0,1,2,3,4,5,6,7,8))#Change outlayers and extract NAs 
+
+bb1 <- subs(bb, df.bb,subswithNA=FALSE)
+df.bs <- data.frame(id=c(NA,1,2,3,4,255), v=c(0,1,2,3,4,5))
+bs1 <- subs(bs, df.bs,subswithNA=FALSE)
+df.bc <- data.frame(id=c(NA,1,2,3,4,5,255), v=c(0,1,2,3,4,5,6))
+bc1 <- subs(bc, df.bc,subswithNA=FALSE)
+lidar.limit <- readOGR(dsn="C:/Users/usuario/Bats_California/layers",layer="LiDAR_Boundary")
+lidar.limit <- spTransform(lidar.limit, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+```
+```{r, echo=FALSE, results='hide', message=FALSE}
+bb<-projectRaster(bb1, PNF)
+bs<-projectRaster(bs1, PNF)
+bc<-projectRaster(bc1, PNF)
+Vegetation_existing<-projectRaster(Vegetation_existing, PNF)
+FireReturnAll<-projectRaster(FireReturnAll, PNF)
+TreatmentsStorrie<-projectRaster(TreatmentsStorrie, PNF)
+FireHistory <-projectRaster(FireHistory, PNF)
+Goshawkforag <-projectRaster(Goshawkforag,PNF)
+GoshawkNEST<- projectRaster(GoshawkNEST, PNF)
+MartenHabit<- projectRaster(MartenHabit, PNF)
+SeralStage<- projectRaster(SeralStage,PNF)
+```
+```{r, echo=FALSE, results='hide', message=FALSE}
+bc<-resample(bc, PNF)
+bb<-resample(bb, PNF)
+bs<-resample(bs, PNF)
+Vegetation_existing<-resample(Vegetation_existing, PNF, method="ngb")
+FireReturnAll<-resample(FireReturnAll, PNF)
+TreatmentsStorrie<-resample(TreatmentsStorrie, PNF)
+FireHistory<-resample(FireHistory, PNF)
+topo<-resample(topo,PNF)
+Goshawkforag<-resample(Goshawkforag,PNF, method="ngb")
+GoshawkNEST <- resample(GoshawkNEST, PNF, method="ngb")
+TreatmentsStorrie[is.na(TreatmentsStorrie)] <- 0
+MartenHabit <- resample (MartenHabit, PNF, method="ngb")
+SeralStage <- resample (SeralStage, PNF, method="ngb")
+```
+
+```{r, echo=FALSE, results='hide',warning=FALSE, cache=TRUE}
+Vegetation_existing<-ratify(Vegetation_existing, count=TRUE)
+```
+
+
+```{r,echo=FALSE,warning=FALSE, cache=TRUE}
+FireReturnAll[FireReturnAll < 0] <- NA
+```
+
+```{r, echo=FALSE, results='hide', warning=FALSE, cache=TRUE}
+roads.v <- readOGR(dsn="C:/Users/usuario/Bats_California/layers",layer="Roads")
+roads.v <- spTransform(roads.v, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+template <- PNF  # this will be the template
+template[] <- NA  # assigns all values as NA
+roads.r <- rasterize(roads.v, template, field=1)
+```
+
+```{r,echo=FALSE, results='hide', cache=TRUE}
+roaddist.r <- distance(roads.r)
+roaddist.r<- roaddist.r*PNF
+
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,results='hide', cache=TRUE}
+rivers <- readOGR(dsn="C:/Users/usuario/Bats_California/layers",layer="NHDFlowline")
+rivers <- spTransform(rivers, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+template2 <- PNF  # this will be the template
+template2[] <- NA  # assigns all values as NA
+rivers.r <- rasterize(rivers, template2, field=1)
+riverdist.r <- distance(rivers.r)
+riverdist.r<- riverdist.r*PNF
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+Predictors <-stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb)
+names(Predictors)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal")
+```
+
+```{r, echo=FALSE}
+#then add the data
+RESULTS <- read.csv("~/Missouri post doc/Results/RESULTS.csv")
+BasalArea <- read.csv("~/Missouri post doc/Results/BasalArea.csv")
+BasalArea<-mutate(BasalArea, Area = (((DIAMETER*0.01)/2)^2)*pi)
+BasalArea<-summarise(group_by(BasalArea, ID), AreaPerHa=sum(Area)*10)
+```
+
+```{r, echo=FALSE}
+RESULTS$CANOPY.COVER.N<-as.numeric(RESULTS$CANOPY.COVER.N)
+RESULTS$CANOPY.COVER.S<-as.numeric(RESULTS$CANOPY.COVER.S)
+RESULTS$CANOPY.COVER.E<-as.numeric(RESULTS$CANOPY.COVER.E)
+RESULTS$CANOPY.COVER.W<-as.numeric(RESULTS$CANOPY.COVER.W)
+RESULTS$CANOPY.COVER.S<-as.numeric(RESULTS$CANOPY.COVER.S)
+
+RESULTS <- mutate(RESULTS, CANOPY.COVER=((1.04*CANOPY.COVER.N)+(1.04*CANOPY.COVER.E)+(1.04*CANOPY.COVER.W)+(1.04*CANOPY.COVER.S)+(CANOPY.COVER.C*1.04))/5)
+RESULTS<-RESULTS[,-c(6:10)]
+
+RESULTS <- mutate(RESULTS, WOODY= 100*((WOOD.N+WOOD.E+WOOD.S+WOOD.W)/200))
+RESULTS<-RESULTS[,-c(6:9)]
+
+RESULTS <- mutate(RESULTS, HERBACIOUS= 100*((HERB.N+HERB.E+HERB.S+HERB.W)/200))
+RESULTS<-RESULTS[,-c(6:9)]
+
+RESULTS <- mutate(RESULTS, GRASS= 100*((GRASS.N+GRASS.E+GRASS.S+GRASS.W)/200))
+RESULTS<-RESULTS[,-c(6:9)]
+
+RESULTS <- mutate(RESULTS, NAKED.SOIL= 100*((NAKED.SOIL.N+NAKED.SOIL.E+NAKED.SOIL.S+NAKED.SOIL.W)/200))
+RESULTS<-RESULTS[,-c(6:9)]
+
+RESULTS <- mutate(RESULTS, ROCKY= 100*((ROCKY.SCREE.N+ROCKY.SCREE.E+ROCKY.SCREE.S+ROCKY.SCREE.W)/200))
+RESULTS<-RESULTS[,-c(6:9)]
+
+RESULTS <- mutate(RESULTS, DOWN.WOOD= 100*((DOWN.WOOD.N+DOWN.WOOD.E+DOWN.WOOD.S+DOWN.WOOD.W)/200))
+RESULTS<-RESULTS[,-c(6:9)]
+
+RESULTS <- mutate(RESULTS, LEAF.LITTER= 100*((LEAF.LITTER.N+LEAF.LITTER.E+LEAF.LITTER.S+LEAF.LITTER.W)/200))
+RESULTS<-RESULTS[,-c(6:9)]
+
+```
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+TempH2NFS8 <- read.csv("~/Missouri post doc/Results/Temperatura/H2NFS8Tem.csv")
+TempH2NFS8$Date.Time<-dmy_hm(TempH2NFS8$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH2NFS8<-mutate(TempH2NFS8, Hour=hour(TempH2NFS8$Date.Time))
+TempH2NFS8i<-filter(TempH2NFS8, Hour>18)
+TempH2NFS8f<-filter(TempH2NFS8, Hour<7)
+TempH2NFS8<-(rbind(TempH2NFS8f,TempH2NFS8i))
+TempH2NFS8$ID<-"H2NFS8"
+TempH2NFS8<-summarise(group_by(TempH2NFS8, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempH2NFS5 <- read.csv("~/Missouri post doc/Results/Temperatura/H2NFS5Tem.csv")
+TempH2NFS5$Date.Time<-dmy_hm(TempH2NFS5$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH2NFS5<-mutate(TempH2NFS5, Hour=hour(TempH2NFS5$Date.Time))
+TempH2NFS5i<-filter(TempH2NFS5, Hour>18)
+TempH2NFS5f<-filter(TempH2NFS5, Hour<7)
+TempH2NFS5<-(rbind(TempH2NFS5f,TempH2NFS5i))
+TempH2NFS5$ID<-"H2NFS5"
+TempH2NFS5<-summarise(group_by(TempH2NFS5, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempH5NFS2 <- read.csv("~/Missouri post doc/Results/Temperatura/H5NFS2Tem.csv")
+TempH5NFS2$Date.Time<-dmy_hm(TempH5NFS2$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH5NFS2<-mutate(TempH5NFS2, Hour=hour(TempH5NFS2$Date.Time))
+TempH5NFS2i<-filter(TempH5NFS2, Hour>18)
+TempH5NFS2f<-filter(TempH5NFS2, Hour<7)
+TempH5NFS2<-(rbind(TempH5NFS2f,TempH5NFS2i))
+TempH5NFS2$ID<-"H5NFS2"
+TempH5NFS2<-summarise(group_by(TempH5NFS2, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempH5NFS6 <- read.csv("~/Missouri post doc/Results/Temperatura/H5NFS6Tem.csv")
+TempH5NFS6$Date.Time<-dmy_hm(TempH5NFS6$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH5NFS6<-mutate(TempH5NFS6, Hour=hour(TempH5NFS6$Date.Time))
+TempH5NFS6i<-filter(TempH5NFS6, Hour>18)
+TempH5NFS6f<-filter(TempH5NFS6, Hour<7)
+TempH5NFS6<-(rbind(TempH5NFS6f,TempH5NFS6i))
+TempH5NFS6$ID<-"H5NFS6"
+TempH5NFS6<-summarise(group_by(TempH5NFS6, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempIB10 <- read.csv("~/Missouri post doc/Results/Temperatura/IB10Tem.csv")
+TempIB10$Date.Time<-dmy_hms(TempIB10$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempIB10<-mutate(TempIB10, Hour=hour(TempIB10$Date.Time))
+TempIB10i<-filter(TempIB10, Hour>18)
+TempIB10f<-filter(TempIB10, Hour<7)
+TempIB10<-(rbind(TempIB10f,TempIB10i))
+TempIB10$ID<-"IB10"
+TempIB10<-summarise(group_by(TempIB10, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempH2NFS9 <- read.csv("~/Missouri post doc/Results/Temperatura/H2NFS9Tem.csv")
+TempH2NFS9$Date.Time<-dmy_hms(TempH2NFS9$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH2NFS9<-mutate(TempH2NFS9, Hour=hour(TempH2NFS9$Date.Time))
+TempH2NFS9i<-filter(TempH2NFS9, Hour>18)
+TempH2NFS9f<-filter(TempH2NFS9, Hour<7)
+TempH2NFS9<-(rbind(TempH2NFS9f,TempH2NFS9i))
+TempH2NFS9$ID<-"H2NFS9"
+TempH2NFS9<-summarise(group_by(TempH2NFS9, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempH4FS8 <- read.csv("~/Missouri post doc/Results/Temperatura/H4FS8Tem.csv")
+TempH4FS8$Date.Time<-dmy_hms(TempH4FS8$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH4FS8<-mutate(TempH4FS8, Hour=hour(TempH4FS8$Date.Time))
+TempH4FS8i<-filter(TempH4FS8, Hour>18)
+TempH4FS8f<-filter(TempH4FS8, Hour<7)
+TempH4FS8<-(rbind(TempH4FS8f,TempH4FS8i))
+TempH4FS8$ID<-"H4FS8"
+TempH4FS8<-summarise(group_by(TempH4FS8, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempH4NFS1 <- read.csv("~/Missouri post doc/Results/Temperatura/H4NFS1Tem.csv")
+TempH4NFS1$Date.Time<-dmy_hms(TempH4NFS1$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH4NFS1<-mutate(TempH4NFS1, Hour=hour(TempH4NFS1$Date.Time))
+TempH4NFS1i<-filter(TempH4NFS1, Hour>18)
+TempH4NFS1f<-filter(TempH4NFS1, Hour<7)
+TempH4NFS1<-(rbind(TempH4NFS1f,TempH4NFS1i))
+TempH4NFS1$ID<-"H4NFS1"
+TempH4NFS1<-summarise(group_by(TempH4NFS1, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempH4NFS5 <- read.csv("~/Missouri post doc/Results/Temperatura/H4NFS5Tem.csv")
+TempH4NFS5$Date.Time<-dmy_hms(TempH4NFS5$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH4NFS5<-mutate(TempH4NFS5, Hour=hour(TempH4NFS5$Date.Time))
+TempH4NFS5i<-filter(TempH4NFS5, Hour>18)
+TempH4NFS5f<-filter(TempH4NFS5, Hour<7)
+TempH4NFS5<-(rbind(TempH4NFS5f,TempH4NFS5i))
+TempH4NFS5$ID<-"H4NFS5"
+TempH4NFS5<-summarise(group_by(TempH4NFS5, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempH3FS8 <- read.csv("~/Missouri post doc/Results/Temperatura/H3FS8Tem.csv")
+TempH3FS8$Date.Time<-dmy_hms(TempH3FS8$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH3FS8<-mutate(TempH3FS8, Hour=hour(TempH3FS8$Date.Time))
+TempH3FS8i<-filter(TempH3FS8, Hour>18)
+TempH3FS8f<-filter(TempH3FS8, Hour<7)
+TempH3FS8<-(rbind(TempH3FS8f,TempH3FS8i))
+TempH3FS8$ID<-"H3FS8"
+TempH3FS8<-summarise(group_by(TempH3FS8, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+TempH4NFS10 <- read.csv("~/Missouri post doc/Results/Temperatura/H4NFS10Tem.csv")
+TempH4NFS10$Date.Time<-dmy_hms(TempH4NFS10$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+TempH4NFS10<-mutate(TempH4NFS10, Hour=hour(TempH4NFS10$Date.Time))
+TempH4NFS10i<-filter(TempH4NFS10, Hour>18)
+TempH4NFS10f<-filter(TempH4NFS10, Hour<7)
+TempH4NFS10<-(rbind(TempH4NFS10f,TempH4NFS10i))
+TempH4NFS10$ID<-"H4NFS10"
+TempH4NFS10<-summarise(group_by(TempH4NFS10, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
+
+Temperatures<-rbind(TempH2NFS8, TempH2NFS5, TempH5NFS2, TempH5NFS6, TempIB10, TempH2NFS9, TempH4FS8, TempH4NFS1, TempH4NFS5, TempH3FS8, TempH4NFS10)
+RESULTS<-left_join(RESULTS, BasalArea)
+RESULTS<-left_join(RESULTS, Temperatures)
+```
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+HumH2NFS8 <- read.csv("~/Missouri post doc/Results/Humedad/H2NFS8Hum.csv")
+HumH2NFS8$Date.Time<-dmy_hm(HumH2NFS8$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH2NFS8<-mutate(HumH2NFS8, Hour=hour(HumH2NFS8$Date.Time))
+HumH2NFS8i<-filter(HumH2NFS8, Hour>18)
+HumH2NFS8f<-filter(HumH2NFS8, Hour<7)
+HumH2NFS8<-(rbind(HumH2NFS8f,HumH2NFS8i))
+HumH2NFS8$ID<-"H2NFS8"
+HumH2NFS8<-summarise(group_by(HumH2NFS8, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumH2NFS5 <- read.csv("~/Missouri post doc/Results/Humedad/H2NFS5Hum.csv")
+HumH2NFS5$Date.Time<-dmy_hm(HumH2NFS5$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH2NFS5<-mutate(HumH2NFS5, Hour=hour(HumH2NFS5$Date.Time))
+HumH2NFS5i<-filter(HumH2NFS5, Hour>18)
+HumH2NFS5f<-filter(HumH2NFS5, Hour<7)
+HumH2NFS5<-(rbind(HumH2NFS5f,HumH2NFS5i))
+HumH2NFS5$ID<-"H2NFS5"
+HumH2NFS5<-summarise(group_by(HumH2NFS5, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumH5NFS2 <- read.csv("~/Missouri post doc/Results/Humedad/H5NFS2Hum.csv")
+HumH5NFS2$Date.Time<-dmy_hm(HumH5NFS2$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH5NFS2<-mutate(HumH5NFS2, Hour=hour(HumH5NFS2$Date.Time))
+HumH5NFS2i<-filter(HumH5NFS2, Hour>18)
+HumH5NFS2f<-filter(HumH5NFS2, Hour<7)
+HumH5NFS2<-(rbind(HumH5NFS2f,HumH5NFS2i))
+HumH5NFS2$ID<-"H5NFS2"
+HumH5NFS2<-summarise(group_by(HumH5NFS2, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumH5NFS6 <- read.csv("~/Missouri post doc/Results/Humedad/H5NFS6Hum.csv")
+HumH5NFS6$Date.Time<-dmy_hm(HumH5NFS6$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH5NFS6<-mutate(HumH5NFS6, Hour=hour(HumH5NFS6$Date.Time))
+HumH5NFS6i<-filter(HumH5NFS6, Hour>18)
+HumH5NFS6f<-filter(HumH5NFS6, Hour<7)
+HumH5NFS6<-(rbind(HumH5NFS6f,HumH5NFS6i))
+HumH5NFS6$ID<-"H5NFS6"
+HumH5NFS6<-summarise(group_by(HumH5NFS6, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumIB10 <- read.csv("~/Missouri post doc/Results/Humedad/IB10Hum.csv")
+HumIB10$Date.Time<-dmy_hm(HumIB10$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumIB10<-mutate(HumIB10, Hour=hour(HumIB10$Date.Time))
+HumIB10i<-filter(HumIB10, Hour>18)
+HumIB10f<-filter(HumIB10, Hour<7)
+HumIB10<-(rbind(HumIB10f,HumIB10i))
+HumIB10$ID<-"IB10"
+HumIB10<-summarise(group_by(HumIB10, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumH2NFS9 <- read.csv("~/Missouri post doc/Results/Humedad/H2NFS9Hum.csv")
+HumH2NFS9$Date.Time<-dmy_hms(HumH2NFS9$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH2NFS9<-mutate(HumH2NFS9, Hour=hour(HumH2NFS9$Date.Time))
+HumH2NFS9i<-filter(HumH2NFS9, Hour>18)
+HumH2NFS9f<-filter(HumH2NFS9, Hour<7)
+HumH2NFS9<-(rbind(HumH2NFS9f,HumH2NFS9i))
+HumH2NFS9$ID<-"H2NFS9"
+HumH2NFS9<-summarise(group_by(HumH2NFS9, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumH4FS8 <- read.csv("~/Missouri post doc/Results/Humedad/H4FS8Hum.csv")
+HumH4FS8$Date.Time<-dmy_hms(HumH4FS8$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH4FS8<-mutate(HumH4FS8, Hour=hour(HumH4FS8$Date.Time))
+HumH4FS8i<-filter(HumH4FS8, Hour>18)
+HumH4FS8f<-filter(HumH4FS8, Hour<7)
+HumH4FS8<-(rbind(HumH4FS8f,HumH4FS8i))
+HumH4FS8$ID<-"H4FS8"
+HumH4FS8<-summarise(group_by(HumH4FS8, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumH4NFS1 <- read.csv("~/Missouri post doc/Results/Humedad/H4NFS1Hum.csv")
+HumH4NFS1$Date.Time<-dmy_hms(HumH4NFS1$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH4NFS1<-mutate(HumH4NFS1, Hour=hour(HumH4NFS1$Date.Time))
+HumH4NFS1i<-filter(HumH4NFS1, Hour>18)
+HumH4NFS1f<-filter(HumH4NFS1, Hour<7)
+HumH4NFS1<-(rbind(HumH4NFS1f,HumH4NFS1i))
+HumH4NFS1$ID<-"H4NFS1"
+HumH4NFS1<-summarise(group_by(HumH4NFS1, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumH4NFS5 <- read.csv("~/Missouri post doc/Results/Humedad/H4NFS5Hum.csv")
+HumH4NFS5$Date.Time<-dmy_hms(HumH4NFS5$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH4NFS5<-mutate(HumH4NFS5, Hour=hour(HumH4NFS5$Date.Time))
+HumH4NFS5i<-filter(HumH4NFS5, Hour>18)
+HumH4NFS5f<-filter(HumH4NFS5, Hour<7)
+HumH4NFS5<-(rbind(HumH4NFS5f,HumH4NFS5i))
+HumH4NFS5$ID<-"H4NFS5"
+HumH4NFS5<-summarise(group_by(HumH4NFS5, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumH3FS8 <- read.csv("~/Missouri post doc/Results/Humedad/H3FS8Hum.csv")
+HumH3FS8$Date.Time<-dmy_hms(HumH3FS8$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH3FS8<-mutate(HumH3FS8, Hour=hour(HumH3FS8$Date.Time))
+HumH3FS8i<-filter(HumH3FS8, Hour>18)
+HumH3FS8f<-filter(HumH3FS8, Hour<7)
+HumH3FS8<-(rbind(HumH3FS8f,HumH3FS8i))
+HumH3FS8$ID<-"H3FS8"
+HumH3FS8<-summarise(group_by(HumH3FS8, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+HumH4NFS10 <- read.csv("~/Missouri post doc/Results/Humedad/H4NFS10Hum.csv")
+HumH4NFS10$Date.Time<-dmy_hms(HumH4NFS10$Date.Time)
+start.time<-hm("19:30")
+end.time<-hm("6:30")
+HumH4NFS10<-mutate(HumH4NFS10, Hour=hour(HumH4NFS10$Date.Time))
+HumH4NFS10i<-filter(HumH4NFS10, Hour>18)
+HumH4NFS10f<-filter(HumH4NFS10, Hour<7)
+HumH4NFS10<-(rbind(HumH4NFS10f,HumH4NFS10i))
+HumH4NFS10$ID<-"H4NFS10"
+HumH4NFS10<-summarise(group_by(HumH4NFS10, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
+
+Humidity<-rbind(HumH2NFS8, HumH2NFS5, HumH5NFS2,HumH5NFS6,HumIB10, HumH2NFS9, HumH4FS8, HumH4NFS1, HumH4NFS5, HumH3FS8, HumH4NFS10)
+RESULTS<-left_join(RESULTS, Humidity)
+```
+
+#Results collected in the field 
+
+```{r results='asis',echo=FALSE}
+library(stargazer)
+#stargazer(RESULTS, type="latex")
+```
+
+#Results colleted with GIS layers
+
+```{r, echo=FALSE}
+plot(Predictors)
+```
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+geopredict<-extract(Predictors, data.frame(RESULTS$LONG,RESULTS$LAT))
+RESULTS<-cbind(RESULTS, geopredict)
+write.csv(RESULTS, file = "geopredict.csv")
+#print(RESULTS)
+Result2<-(RESULTS[,c(1,c(23:30))])
+Number<-c(1:length(RESULTS[,1]))
+Result2<- cbind(Number,Result2)
+```
+
+```{r results='asis',echo=FALSE}
+library(stargazer)
+#stargazer(Result2[,3:10], type="latex")
+```
+
+```{r,echo=FALSE, message=FALSE,warning=FALSE, results='asis'}
+Dailycov <- read.csv("C:/Users/usuario/Bats_California/Rbats/Dailycov.csv")
+
+Dailycov<-left_join (RESULTS, Dailycov)
+Dailycov<-Dailycov[,-c(1:31)]
+Julian<-Dailycov[,1:3]
+Max.hum<-Dailycov[,4:6]
+Max.temp<-Dailycov[,7:9]
+Mean.hum<-Dailycov[,10:12]
+Mean.temp<-Dailycov[,13:15]
+Min.hum<-Dailycov[,16:18]
+Min.temp<-Dailycov[,19:21]
+Sd.hum<-Dailycov[,22:24]
+Sd.temp<-Dailycov[,25:27]
+
+Dailycov<- list(Julian,Max.hum, Max.temp, Mean.hum,Mean.temp, Min.hum, Min.temp, Sd.hum, Sd.temp)
+names(Dailycov) <- c("Julian", "Maxhum","Maxtemp","Meanhum", "Meantemp","Minhum","Mintemp","sdhum","sdtemp")
+```
+
+#Maps showing the sampled Points
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+plot(PNF, legend=FALSE)
+points(RESULTS$LONG, RESULTS$LAT, cex=0.5)
+map.scale(-120.7, 39.5, relwidth = 0.15, metric = TRUE, ratio = FALSE,cex=0.7)
+```
+
+#Results of species prescence
+
+In this area 0 means absence, and 1 means prescence. This table has for each site (ID), every specie and day, so for example if Mylu1=0, that means that for *Myotis lucifugus* (common name Little Brown bat, was detected on day one for that particular site).
+
+##Here is a key for bat species
+
+- *Myotis yumanensis* (Myyu)
+- *Myotis californicus* (Myca)
+- *Myotis ciliolabrum* (Myci)
+- *Myotis volans* (Myvo)
+- *Myotis lucifugus* (Mylu)
+- *Parastrellus hesperus* (Pahe)
+- *Lasiurus blossevillii* (Labo)
+- *Myotis evotis* (Myev)
+- *Antrozous pallidus*  **(Anpa)**
+- *Eptesicus fuscus* (Epfu)
+- *Lasionycteris noctivagans* (Lano)
+- *Myotis thysanodes* **(Myth)**
+- *Tadarida brasiliensis* (Tabr)
+- *Lasiurus cinereus* (Laci)
+- *Corynorhinus townsendii* **(Coto)**
+- *Euderma maculatum* (Euma)
+- *Eumops perotis* (Eupe)
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+BatOccu <- read.csv("~/Missouri post doc/Results/BatOccu.csv")
+#print(BatOccu)
+```
+
+#Maps predicting the distribution of bats
+
+##Yuma myotis (*Myotis yumanensis*)
+
+```{r, echo=FALSE,message=FALSE}
+library("unmarked", lib.loc="~/R/win-library/3.2")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49a
+BatOccuMyYu<-BatOccu[,2:4]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuMyYu2<-unmarkedFrameOccu(y = BatOccuMyYu, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.My.Yu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyYu2)
+
+#model.occu.My.Yu2 <- occu(~ Julian + Meanhum + Meantemp+ ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal + Canopy.cover + Woody + Herbacious + Grass + Naked.Soil + Rocky + Down.Wood + Leaf.Litter ,SimOccuMyYu2)
+
+
+select.My.Yu2 <- dredge(model.occu.My.Yu2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.My.Yu2<-get.models(select.My.Yu2, 1)[[1]]
+Occu.layer.MyYu2 <- predict(best.My.Yu2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.MyYu2<-Occu.layer.MyYu2*PNF
+plot(Occu.layer.MyYu2$layer.1, colNA="black", main="Occupancy estimation for Yuma Myotis",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.My.Yu2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+yuma.stack <- stack(riverdist.r,  bs, bb, Occu.layer.MyYu2$layer.1)
+
+names(yuma.stack)<-c("Distance to water", "Burn intensity soil", "Burn intensity basal", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (yuma.stack)
+```
+
+##California bat (*Myotis californicus*)
+
+
+```{r, echo=FALSE,message=FALSE}
+library("unmarked", lib.loc="~/R/win-library/3.2")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuMyCa<-BatOccu[,5:7]
+```
+
+###Total model
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuMyCa2<-unmarkedFrameOccu(y = BatOccuMyCa, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.My.Ca2 <- occu(~ Julian +  Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyCa2)
+
+
+select.My.Ca2 <- dredge(model.occu.My.Ca2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.My.Ca2<-get.models(select.My.Ca2, 1)[[1]]
+Occu.layer.MyCa2 <- predict(best.My.Ca2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.MyCa2<-Occu.layer.MyCa2*PNF
+plot(Occu.layer.MyCa2$layer.1, colNA="black", main="Occupancy estimation for California Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.My.Ca2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+california.stack <- stack(Vegetation_existing, FireReturnAll, Occu.layer.MyCa2$layer.1)
+
+names(california.stack)<-c("Existing vegetation","Fire Interval", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (california.stack)
+```
+
+##Western Small Footed Myotis (*Myotis ciliolabrum*)
+
+```{r, echo=FALSE,message=FALSE, results='asis'}
+library("unmarked", lib.loc="~/R/win-library/3.2")
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuMyCi<-BatOccu[,8:10]
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+write.csv(sampling.cov2, file = "covariables.csv")
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuMyCi2<-unmarkedFrameOccu(y = BatOccuMyCi, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.My.Ci2 <- occu(~ Julian+ Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyCi2)
+
+
+select.My.Ci2 <- dredge(model.occu.My.Ci2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.My.Ci2<-get.models(select.My.Ci2, 1)[[1]]
+Occu.layer.MyCi2 <- predict(best.My.Ci2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.MyCi2<-Occu.layer.MyCi2*PNF
+plot(Occu.layer.MyCi2$layer.1, colNA="black", main="Occupancy estimation for Western Small Footed Myotis",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.My.Ci2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+smallfooted.stack <- stack(Vegetation_existing, FireReturnAll, bs,bc, bb, Occu.layer.MyCi2$layer.1)
+
+names(smallfooted.stack)<-c("Existing vegetation","Fire Interval", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (smallfooted.stack)
+```
+
+##Hairy-winged bat (*Myotis volans*)
+
+```{r, echo=FALSE,message=FALSE}
+library("unmarked", lib.loc="~/R/win-library/3.2")
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+
+BatOccuMyVo<-BatOccu[,11:13]
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuMyVo2<-unmarkedFrameOccu(y = BatOccuMyVo, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.My.Vo2 <- occu(~ Julian + Meanhum + Meantemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyVo2)
+
+select.My.Vo2 <- dredge(model.occu.My.Vo2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.My.Vo2<-get.models(select.My.Vo2, 1)[[1]]
+Occu.layer.MyVo2 <- predict(best.My.Vo2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.MyVo2<-Occu.layer.MyVo2*PNF
+plot(Occu.layer.MyVo2$layer.1, colNA="black", main="Occupancy estimation for Hairy-winged bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.My.Vo2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+hairy.stack <- stack(riverdist.r, roaddist.r,FireReturnAll, topo, Occu.layer.MyVo2$layer.1)
+
+names(hairy.stack)<-c("Distance to water", "Distance to road","Fire Interval", "Altitude", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (hairy.stack)
+```
+
+##Little Brown bat (*Myotis lucifugus*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuMyLu<-BatOccu[,14:16]
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuMyLu2<-unmarkedFrameOccu(y = BatOccuMyLu, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.My.Lu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyLu2)
+
+
+select.My.Lu2 <- dredge(model.occu.My.Lu2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.My.Lu2<-get.models(select.My.Lu2, 1)[[1]]
+Occu.layer.MyLu2 <- predict(best.My.Lu2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.MyLu2<-Occu.layer.MyLu2*PNF
+plot(Occu.layer.MyLu2$layer.1, colNA="black", main="Occupancy estimation for Little Brown Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.My.Lu2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+littlebrown.stack <- stack(riverdist.r, topo, bs,bc, Occu.layer.MyLu2$layer.1)
+
+names(littlebrown.stack)<-c("Distance to water",  "Altitude", "Burn intensity soil","Burn intensity Canopy", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (littlebrown.stack)
+```
+
+
+##Western Red Bat (*Lasiurus blossevillii*)
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+
+#N=49
+BatOccuLaBl<-BatOccu[,20:22]
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuLaBl2<-unmarkedFrameOccu(y = BatOccuLaBl, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.La.Bl2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal ,SimOccuLaBl2)
+
+select.La.Bl2 <- dredge(model.occu.La.Bl2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.La.Bl2<-get.models(select.La.Bl2, 1)[[1]]
+Occu.layer.LaBl2 <- predict(best.La.Bl2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.LaBl2<-Occu.layer.LaBl2*PNF
+plot(Occu.layer.LaBl2$layer.1, colNA="black", main="Occupancy estimation for Western Red Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.La.Bl2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+westernred.stack <- stack(riverdist.r, Vegetation_existing, FireReturnAll, bb, Occu.layer.LaBl2$layer.1)
+
+names(westernred.stack)<-c("Distance to water",  "Existing vegetation","Fire Interval", "Burn intensity basal", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (westernred.stack)
+```
+
+## Long-eared Bat (*Myotis evotis*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+
+#N=49
+
+BatOccuMyEv<-BatOccu[,23:25]
+
+```
+
+
+
+###Total model
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+#sampling.cov2<- data.frame(geopredict)
+#summary (sampling.cov2)
+#sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+#colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+#summary(sampling.cov2)
+#SimOccuMyEv2<-unmarkedFrameOccu(y = BatOccuMyEv, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+#model.occu.My.Ev2 <- occu(~ Julian + Meanhum + Meantemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyEv2)
+
+
+#select.My.Ev2 <- dredge(model.occu.My.Ev2, rank = "AICc")
+```
+
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+#library(texreg)
+#texreg(extract(subset(select.My.Ev2, delta <= 2, recalc.weights = FALSE)))
+```
+
+
+## Pallid Bat (*Antrozous pallidus*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuAnPa<-BatOccu[,26:28]
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuAnPa2<-unmarkedFrameOccu(y = BatOccuAnPa, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.An.Pa2 <- occu(~ Julian +Meanhum + Meantemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuAnPa2)
+
+
+select.An.Pa2 <- dredge(model.occu.An.Pa2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.An.Pa2<-get.models(select.An.Pa2, 1)[[1]]
+Occu.layer.AnPa2 <- predict(best.An.Pa2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.AnPa2<-Occu.layer.AnPa2*PNF
+plot(Occu.layer.AnPa2$layer.1, colNA="black", main="Occupancy estimation for Pallid Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.An.Pa2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+pallid.stack <- stack(Vegetation_existing, FireReturnAll, bs, bb, Occu.layer.AnPa2$layer.1)
+
+names(pallid.stack)<-c( "Existing vegetation","Fire Interval",  "Burn intensity soil", "Burn intensity basal", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (pallid.stack)
+```
+
+###Fringed Bat (*Myotis thysanoides*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuMyTh<-BatOccu[,35:37]
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuMyTh2<-unmarkedFrameOccu(y = BatOccuMyTh, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.My.Th2 <- occu(~ Julian +Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyTh2)
+
+
+select.My.Th2 <- dredge(model.occu.My.Th2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.My.Th2<-get.models(select.My.Th2, 1)[[1]]
+Occu.layer.MyTh2 <- predict(best.My.Th2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.MyTh2<-Occu.layer.MyTh2*PNF
+plot(Occu.layer.MyTh2$layer.1, colNA="black", main="Occupancy estimation for Fringed Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.My.Th2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+fringed.stack <- stack(riverdist.r, bb, Occu.layer.MyTh2$layer.1)
+
+names(fringed.stack)<-c("Distance to water", "Burn intensity basal", "Occupancy")
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (fringed.stack)
+```
+
+##Townsend’s Long-eared Bat (*Corynorhinus townsendii*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuCoTo<-BatOccu[,44:46]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuCoTo2<-unmarkedFrameOccu(y = BatOccuCoTo, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.Co.To2 <- occu(~ Julian + Meanhum + Meantemp  ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuCoTo2)
+
+
+select.Co.To2 <- dredge(model.occu.Co.To2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.Co.To2<-get.models(select.Co.To2, 1)[[1]]
+Occu.layer.CoTo2 <- predict(best.Co.To2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.CoTo2<-Occu.layer.CoTo2*PNF
+plot(Occu.layer.CoTo2$layer.1, colNA="black", main="Occupancy estimation for Townsend big eared bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.Co.To2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+townsend.stack <- stack(FireReturnAll,bc, Occu.layer.CoTo2$layer.1)
+
+names(townsend.stack)<-c("Fire Interval", "Burn intensity Canopy", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (townsend.stack)
+```
+
+##The western pipistrelle (*Parastrellus hesperus*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuPaHe<-BatOccu[,17:19]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuPaHe2<-unmarkedFrameOccu(y = BatOccuPaHe, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.Pa.He2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuPaHe2, se = FALSE)
+
+#fmest <- model.occu.Pa.He2@estimates 
+
+#model.occu.Pa.He2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuPaHe2, start = c(0.396, -3.340, -0.442, 25.786, -2.343, 10.181,0.6224, 0.4754, -0.2658, -4.2432, 3.8564, 0.0531, 2.9693, 5.2401, 6.3844, ) )
+
+#select.Pa.He2 <- dredge(model.occu.Pa.He2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+#best.Pa.He2<-get.models(select.Pa.He2, 1)[[1]]
+#Occu.layer.PaHe2 <- predict(best.Pa.He2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+#Occu.layer.PaHe2<-Occu.layer.PaHe2*PNF
+#plot(Occu.layer.PaHe2$layer.1, colNA="black", main="Occupancy estimation for Western pipistrelle",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+#library(texreg)
+#texreg(extract(subset(select.Pa.He2, delta <= 2, recalc.weights = FALSE)))
+```
+
+##big brown bat (*Eptesicus fuscus*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuEpFu<-BatOccu[,29:31]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuEpFu2<-unmarkedFrameOccu(y = BatOccuEpFu, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.Ep.Fu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuEpFu2)
+
+
+select.Ep.Fu2 <- dredge(model.occu.Ep.Fu2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.Ep.Fu2<-get.models(select.Ep.Fu2, 1)[[1]]
+Occu.layer.EpFu2 <- predict(best.Ep.Fu2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.EpFu2<-Occu.layer.EpFu2*PNF
+plot(Occu.layer.EpFu2$layer.1, colNA="black", main="Occupancy estimation for Big Brown Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.Ep.Fu2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE,cache=TRUE}
+bigbrown.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, topo, bb, Occu.layer.EpFu2$layer.1)
+
+names(bigbrown.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Altitude", "Burn intensity basal", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (bigbrown.stack)
+```
+
+##silver-haired bat (*Lasionycteris noctivagans*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuLaNo<-BatOccu[,32:34]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuLaNo2<-unmarkedFrameOccu(y = BatOccuLaNo, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.La.No2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuLaNo2)
+
+
+select.La.No2 <- dredge(model.occu.La.No2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.La.No2<-get.models(select.La.No2, 1)[[1]]
+Occu.layer.LaNo2 <- predict(best.La.No2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.LaNo2<-Occu.layer.LaNo2*PNF
+plot(Occu.layer.LaNo2$layer.1, colNA="black", main="Occupancy estimation for Silver Haired Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.La.No2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE, cache=TRUE}
+silver.stack <- stack(riverdist.r, topo, bs, Occu.layer.LaNo2$layer.1)
+
+names(silver.stack)<-c("Distance to water", "Altitude", "Burn intensity soil", "Occupancy")
+
+#hoary.stack <- stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+#names(hoary.stack)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (silver.stack)
+```
+
+##Brazilian free-tailed bat (*Tadarida brasiliensis*)
+
+
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+BatOccuTaBr<-BatOccu[,38:40]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuTaBr2<-unmarkedFrameOccu(y = BatOccuTaBr, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+#model.occu.Ta.Br2 <- occu(~ 1 ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuTaBr2)
+
+
+#select.Ta.Br2 <- dredge(model.occu.Ta.Br2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+#best.Ta.Br2<-get.models(select.Ta.Br2, 1)[[1]]
+#Occu.layer.TaBr2 <- predict(best.Ta.Br2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+#Occu.layer.TaBr2<-Occu.layer.TaBr2*PNF
+#plot(Occu.layer.TaBr2$layer.1, colNA="black", main="Occupancy estimation for Brazilian Free-tailed Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+#library(texreg)
+#texreg(extract(subset(select.Ta.Br2, delta <= 2, recalc.weights = FALSE)))
+```
+
+##hoary bat (*Lasiurus cinereus*)
+
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+BatOccuLaCi<-BatOccu[,41:43]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+sampling.cov2<- data.frame(geopredict)
+sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
+colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+SimOccuLaCi2<-unmarkedFrameOccu(y = BatOccuLaCi, siteCovs =sampling.cov2, obsCovs=Dailycov)
+
+model.occu.La.Ci2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Distance.to.water + Distance.to.road + Existing.vegetation + Fire.Interval + Altitude + Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuLaCi2)
+
+
+select.La.Ci2 <- dredge(model.occu.La.Ci2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+best.La.Ci2<-get.models(select.La.Ci2, 1)[[1]]
+Occu.layer.LaCi2 <- predict(best.La.Ci2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+Occu.layer.LaCi2<-Occu.layer.LaCi2*PNF
+plot(Occu.layer.LaCi2$layer.1, colNA="black", main="Occupancy estimation for Hoary Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+texreg(extract(subset(select.La.Ci2, delta <= 2, recalc.weights = FALSE)))
+```
+
+```{r,echo=FALSE, cache=TRUE}
+hoary.stack <- stack(Vegetation_existing, FireReturnAll, bs,bc, bb, Occu.layer.LaCi2$layer.1)
+
+names(hoary.stack)<-c("Existing vegetation","Fire Interval","Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Occupancy")
+
+pairs (hoary.stack)
+```
+
+##Spotted bat (*Euderma maculatum*)
+
+## western mastiff bat (*Eumops perotis*)
+
+#Relationships between different species of Bats
+
+
+```{r,echo=FALSE, cache=TRUE}
+#N=49a
+#AllBats<-stack(Occu.layer.MyYu$layer.1,Occu.layer.MyCa$layer.1,Occu.layer.MyCi$layer.1,Occu.layer.MyVo$layer.1,Occu.layer.MyLu$layer.1, Occu.layer.LaBl$layer.1, Occu.layer.MyEv$layer.1, Occu.layer.AnPa$layer.1, Occu.layer.MyTh$layer.1, Occu.layer.CoTo$layer.1)`
+#names(AllBats)<-c("Yuma Myotis", "California Bat","Small Footed Myotis", "Hairy-winged bat" ,"Little Brown Bat", "Western Red Bat", "Long-eared Bat", "Pallid Bat", "Fringed Bat", "Townsend's big-eared Bat")
+#plot(AllBats, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black") 
+#pairs(AllBats, xlim=c(0,1), ylim=c(0,1))
+```
+
+```{r,echo=FALSE, cache=TRUE}
+#N=49a
+AllBats<-stack(Occu.layer.MyYu2$layer.1, Occu.layer.MyCa2$layer.1, Occu.layer.MyCi2$layer.1,Occu.layer.MyVo2$layer.1,Occu.layer.MyLu2$layer.1, Occu.layer.LaBl2$layer.1, Occu.layer.AnPa2$layer.1, Occu.layer.MyTh2$layer.1, Occu.layer.CoTo2$layer.1, Occu.layer.EpFu2$layer.1, Occu.layer.LaNo2$layer.1, Occu.layer.LaCi2$layer.1)
+names(AllBats)<-c("Yuma Myotis", "California bat","Small Footed Myotis", "Hairy-winged bat" ,"Little Brown Bat", "Western Red Bat", "Pallid Bat", "Fringed Bat", "Townsend's big-eared Bat", "Big Brow Bat","Silver-Haired Bat" , "Hoary Bat")
+plot(AllBats, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black") 
+pairs(AllBats, xlim=c(0,1), ylim=c(0,1))
+```
+
+#**The End**
+
+

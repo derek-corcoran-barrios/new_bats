@@ -32,112 +32,58 @@ library(stargazer)
 library(xtable)
 library(MuMIn)
 library(ggplot2)
+library(RCurl)
+library(foreign)
 ```
 
 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide', cache=FALSE}
 #read rasters
-PNF<- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/PNF.asc")
+PNF<- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/PNF.asc")
 PNF<-raster (PNF)
-bc <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/burn_canopy.asc")
+bc <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/bc.asc")
 bc<-raster (bc)
-crs(bc) <- "+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-bb <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/burn_basal.asc")
+bb <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/bb.asc")
 bb<-raster (bb)
-bs <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/burn_severity.asc")
+bs <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/bs.asc")
 bs<-raster (bs)
-topo <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/plumastopo.asc")
+topo <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/topo.asc")
 topo<-raster (topo)
-Vegetation_existing <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/VegTypeAll.asc")
+topo<-topo*PNF
+Vegetation_existing <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/Vegetation_existing.asc")
 Vegetation_existing<-raster (Vegetation_existing)
-FireReturnAll <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/FireReturnAll.asc")
+FireReturnAll <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/FireReturnAll.asc")
 FireReturnAll<-raster (FireReturnAll)
-TreatmentsStorrie <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/TreatmentsStorrie.asc")
-TreatmentsStorrie<-raster (TreatmentsStorrie)
-FireHistory <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/FireHistory.asc")
-FireHistory<-raster (FireHistory)
-Goshawkforag <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/Goshawkforag.asc")
-Goshawkforag<-raster (Goshawkforag)
-GoshawkNEST <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/GoshawkNEST.asc")
-GoshawkNEST<-raster (GoshawkNEST)
-MartenHabit <- readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/MartenHabit.asc")
-MartenHabit<-raster (MartenHabit)
-SeralStage <-readGDAL("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers/SeralStage.asc")
-SeralStage<-raster (SeralStage)
 ```
 
-```{r, echo=FALSE, results='hide', message=FALSE, cache=FALSE}
-df.bb <- data.frame(id=c(NA,1,2,3,4,5,6,7,255), v=c(0,1,2,3,4,5,6,7,8))#Change outlayers and extract NAs 
 
-bb1 <- subs(bb, df.bb,subswithNA=FALSE)
-df.bs <- data.frame(id=c(NA,1,2,3,4,255), v=c(0,1,2,3,4,5))
-bs1 <- subs(bs, df.bs,subswithNA=FALSE)
-df.bc <- data.frame(id=c(NA,1,2,3,4,5,255), v=c(0,1,2,3,4,5,6))
-bc1 <- subs(bc, df.bc,subswithNA=FALSE)
-lidar.limit <- readOGR(dsn="/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers",layer="LiDAR_Boundary")
-lidar.limit <- spTransform(lidar.limit, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
+```{r, echo=FALSE, results='hide', message=FALSE}
+#bb<-projectRaster(bb1, PNF)
+#bs<-projectRaster(bs1, PNF)
+#bc<-projectRaster(bc1, PNF)
+#Vegetation_existing<-projectRaster(Vegetation_existing, PNF)
+#FireReturnAll<-projectRaster(FireReturnAll, PNF)
 ```
 
 ```{r, echo=FALSE, results='hide', message=FALSE}
-bb<-projectRaster(bb1, PNF)
-bs<-projectRaster(bs1, PNF)
-bc<-projectRaster(bc1, PNF)
-Vegetation_existing<-projectRaster(Vegetation_existing, PNF)
-FireReturnAll<-projectRaster(FireReturnAll, PNF)
-TreatmentsStorrie<-projectRaster(TreatmentsStorrie, PNF)
-FireHistory <-projectRaster(FireHistory, PNF)
-Goshawkforag <-projectRaster(Goshawkforag,PNF)
-GoshawkNEST<- projectRaster(GoshawkNEST, PNF)
-MartenHabit<- projectRaster(MartenHabit, PNF)
-SeralStage<- projectRaster(SeralStage,PNF)
-```
-
-```{r, echo=FALSE, results='hide', message=FALSE}
-bc<-resample(bc, PNF)
-bb<-resample(bb, PNF)
-bs<-resample(bs, PNF)
-Vegetation_existing<-resample(Vegetation_existing, PNF, method="ngb")
-FireReturnAll<-resample(FireReturnAll, PNF)
-TreatmentsStorrie<-resample(TreatmentsStorrie, PNF)
-FireHistory<-resample(FireHistory, PNF)
-topo<-resample(topo,PNF)
-Goshawkforag<-resample(Goshawkforag,PNF, method="ngb")
-GoshawkNEST <- resample(GoshawkNEST, PNF, method="ngb")
-TreatmentsStorrie[is.na(TreatmentsStorrie)] <- 0
-MartenHabit <- resample (MartenHabit, PNF, method="ngb")
-SeralStage <- resample (SeralStage, PNF, method="ngb")
-```
-
-```{r, echo=FALSE, results='hide',warning=FALSE, cache=TRUE}
-Vegetation_existing<-ratify(Vegetation_existing, count=TRUE)
-```
-
-
-```{r,echo=FALSE,warning=FALSE, cache=TRUE}
-FireReturnAll[FireReturnAll < 0] <- NA
+#bc<-resample(bc, PNF)
+#bb<-resample(bb, PNF)
+#bs<-resample(bs, PNF)
+#Vegetation_existing<-resample(Vegetation_existing, PNF, method="ngb")
+#FireReturnAll<-resample(FireReturnAll, PNF)
+#topo<-resample(topo,PNF)
 ```
 
 ```{r, echo=FALSE, results='hide', warning=FALSE, cache=TRUE}
-roads.v <- readOGR(dsn="/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers",layer="Roads")
-roads.v <- spTransform(roads.v, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
-template <- PNF  # this will be the template
-template[] <- NA  # assigns all values as NA
-roads.r <- rasterize(roads.v, template, field=1)
-```
-
-```{r,echo=FALSE, results='hide', cache=TRUE}
-roaddist.r <- distance(roads.r)
+roaddist.r<- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/roaddist.asc")
+roaddist.r<-raster (roaddist.r)
 roaddist.r<- roaddist.r*PNF
-
 ```
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE,results='hide', cache=TRUE}
-rivers <- readOGR(dsn="/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/layers",layer="NHDFlowline")
-rivers <- spTransform(rivers, CRS("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"))
-template2 <- PNF  # this will be the template
-template2[] <- NA  # assigns all values as NA
-rivers.r <- rasterize(rivers, template2, field=1)
-riverdist.r <- distance(rivers.r)
+riverdist.r<- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/riverdist.asc")
+riverdist.r<-raster (riverdist.r)
+riverdist.r<- riverdist.r*PNF
 riverdist.r<- riverdist.r*PNF
 
 ```
@@ -149,344 +95,29 @@ names(Predictors)<-c("Distance to water", "Distance to road", "Existing vegetati
 
 ```{r, echo=FALSE}
 #then add the data
-RESULTS <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/RESULTS.csv")
-BasalArea <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/BasalArea.csv")
-BasalArea<-mutate(BasalArea, Area = (((DIAMETER*0.01)/2)^2)*pi)
-BasalArea<-summarise(group_by(BasalArea, ID), AreaPerHa=sum(Area)*10)
+RESULTS <- read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/RESULTS.csv")
+RESULTS$START.DATE<- dmy(as.character(RESULTS$START.DATE), tz = "America/Los_Angeles")
+RESULTS$END.DATE<- dmy(as.character(RESULTS$END.DATE), tz = "America/Los_Angeles")
 ```
 
-```{r, echo=FALSE}
-RESULTS$CANOPY.COVER.N<-as.numeric(RESULTS$CANOPY.COVER.N)
-RESULTS$CANOPY.COVER.S<-as.numeric(RESULTS$CANOPY.COVER.S)
-RESULTS$CANOPY.COVER.E<-as.numeric(RESULTS$CANOPY.COVER.E)
-RESULTS$CANOPY.COVER.W<-as.numeric(RESULTS$CANOPY.COVER.W)
-RESULTS$CANOPY.COVER.S<-as.numeric(RESULTS$CANOPY.COVER.S)
-
-RESULTS <- mutate(RESULTS, CANOPY.COVER=((1.04*CANOPY.COVER.N)+(1.04*CANOPY.COVER.E)+(1.04*CANOPY.COVER.W)+(1.04*CANOPY.COVER.S)+(CANOPY.COVER.C*1.04))/5)
-RESULTS<-RESULTS[,-c(6:10)]
-
-RESULTS <- mutate(RESULTS, WOODY= 100*((WOOD.N+WOOD.E+WOOD.S+WOOD.W)/200))
-RESULTS<-RESULTS[,-c(6:9)]
-
-RESULTS <- mutate(RESULTS, HERBACIOUS= 100*((HERB.N+HERB.E+HERB.S+HERB.W)/200))
-RESULTS<-RESULTS[,-c(6:9)]
-
-RESULTS <- mutate(RESULTS, GRASS= 100*((GRASS.N+GRASS.E+GRASS.S+GRASS.W)/200))
-RESULTS<-RESULTS[,-c(6:9)]
-
-RESULTS <- mutate(RESULTS, NAKED.SOIL= 100*((NAKED.SOIL.N+NAKED.SOIL.E+NAKED.SOIL.S+NAKED.SOIL.W)/200))
-RESULTS<-RESULTS[,-c(6:9)]
-
-RESULTS <- mutate(RESULTS, ROCKY= 100*((ROCKY.SCREE.N+ROCKY.SCREE.E+ROCKY.SCREE.S+ROCKY.SCREE.W)/200))
-RESULTS<-RESULTS[,-c(6:9)]
-
-RESULTS <- mutate(RESULTS, DOWN.WOOD= 100*((DOWN.WOOD.N+DOWN.WOOD.E+DOWN.WOOD.S+DOWN.WOOD.W)/200))
-RESULTS<-RESULTS[,-c(6:9)]
-
-RESULTS <- mutate(RESULTS, LEAF.LITTER= 100*((LEAF.LITTER.N+LEAF.LITTER.E+LEAF.LITTER.S+LEAF.LITTER.W)/200))
-RESULTS<-RESULTS[,-c(6:9)]
-
-```
 
 ```{r,echo=FALSE, warning=FALSE,message=FALSE}
-TempH2NFS8 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H2NFS8Tem.csv")
-TempH2NFS8$Date.Time<-dmy_hm(TempH2NFS8$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH2NFS8<-mutate(TempH2NFS8, Hour=hour(TempH2NFS8$Date.Time))
-TempH2NFS8i<-filter(TempH2NFS8, Hour>18)
-TempH2NFS8f<-filter(TempH2NFS8, Hour<7)
-TempH2NFS8<-(rbind(TempH2NFS8f,TempH2NFS8i))
-TempH2NFS8$ID<-"H2NFS8"
-TempH2NFS8<-summarise(group_by(TempH2NFS8, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempH2NFS5 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H2NFS5Tem.csv")
-TempH2NFS5$Date.Time<-dmy_hm(TempH2NFS5$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH2NFS5<-mutate(TempH2NFS5, Hour=hour(TempH2NFS5$Date.Time))
-TempH2NFS5i<-filter(TempH2NFS5, Hour>18)
-TempH2NFS5f<-filter(TempH2NFS5, Hour<7)
-TempH2NFS5<-(rbind(TempH2NFS5f,TempH2NFS5i))
-TempH2NFS5$ID<-"H2NFS5"
-TempH2NFS5<-summarise(group_by(TempH2NFS5, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempH5NFS2 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H5NFS2Tem.csv")
-TempH5NFS2$Date.Time<-dmy_hm(TempH5NFS2$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH5NFS2<-mutate(TempH5NFS2, Hour=hour(TempH5NFS2$Date.Time))
-TempH5NFS2i<-filter(TempH5NFS2, Hour>18)
-TempH5NFS2f<-filter(TempH5NFS2, Hour<7)
-TempH5NFS2<-(rbind(TempH5NFS2f,TempH5NFS2i))
-TempH5NFS2$ID<-"H5NFS2"
-TempH5NFS2<-summarise(group_by(TempH5NFS2, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempH5NFS6 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H5NFS6Tem.csv")
-TempH5NFS6$Date.Time<-dmy_hm(TempH5NFS6$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH5NFS6<-mutate(TempH5NFS6, Hour=hour(TempH5NFS6$Date.Time))
-TempH5NFS6i<-filter(TempH5NFS6, Hour>18)
-TempH5NFS6f<-filter(TempH5NFS6, Hour<7)
-TempH5NFS6<-(rbind(TempH5NFS6f,TempH5NFS6i))
-TempH5NFS6$ID<-"H5NFS6"
-TempH5NFS6<-summarise(group_by(TempH5NFS6, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempIB10 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/IB10Tem.csv")
-TempIB10$Date.Time<-dmy_hms(TempIB10$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempIB10<-mutate(TempIB10, Hour=hour(TempIB10$Date.Time))
-TempIB10i<-filter(TempIB10, Hour>18)
-TempIB10f<-filter(TempIB10, Hour<7)
-TempIB10<-(rbind(TempIB10f,TempIB10i))
-TempIB10$ID<-"IB10"
-TempIB10<-summarise(group_by(TempIB10, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempH2NFS9 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H2NFS9Tem.csv")
-TempH2NFS9$Date.Time<-dmy_hms(TempH2NFS9$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH2NFS9<-mutate(TempH2NFS9, Hour=hour(TempH2NFS9$Date.Time))
-TempH2NFS9i<-filter(TempH2NFS9, Hour>18)
-TempH2NFS9f<-filter(TempH2NFS9, Hour<7)
-TempH2NFS9<-(rbind(TempH2NFS9f,TempH2NFS9i))
-TempH2NFS9$ID<-"H2NFS9"
-TempH2NFS9<-summarise(group_by(TempH2NFS9, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempH4FS8 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H4FS8Tem.csv")
-TempH4FS8$Date.Time<-dmy_hms(TempH4FS8$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH4FS8<-mutate(TempH4FS8, Hour=hour(TempH4FS8$Date.Time))
-TempH4FS8i<-filter(TempH4FS8, Hour>18)
-TempH4FS8f<-filter(TempH4FS8, Hour<7)
-TempH4FS8<-(rbind(TempH4FS8f,TempH4FS8i))
-TempH4FS8$ID<-"H4FS8"
-TempH4FS8<-summarise(group_by(TempH4FS8, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempH4NFS1 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H4NFS1Tem.csv")
-TempH4NFS1$Date.Time<-dmy_hms(TempH4NFS1$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH4NFS1<-mutate(TempH4NFS1, Hour=hour(TempH4NFS1$Date.Time))
-TempH4NFS1i<-filter(TempH4NFS1, Hour>18)
-TempH4NFS1f<-filter(TempH4NFS1, Hour<7)
-TempH4NFS1<-(rbind(TempH4NFS1f,TempH4NFS1i))
-TempH4NFS1$ID<-"H4NFS1"
-TempH4NFS1<-summarise(group_by(TempH4NFS1, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempH4NFS5 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H4NFS5Tem.csv")
-TempH4NFS5$Date.Time<-dmy_hms(TempH4NFS5$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH4NFS5<-mutate(TempH4NFS5, Hour=hour(TempH4NFS5$Date.Time))
-TempH4NFS5i<-filter(TempH4NFS5, Hour>18)
-TempH4NFS5f<-filter(TempH4NFS5, Hour<7)
-TempH4NFS5<-(rbind(TempH4NFS5f,TempH4NFS5i))
-TempH4NFS5$ID<-"H4NFS5"
-TempH4NFS5<-summarise(group_by(TempH4NFS5, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempH3FS8 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H3FS8Tem.csv")
-TempH3FS8$Date.Time<-dmy_hms(TempH3FS8$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH3FS8<-mutate(TempH3FS8, Hour=hour(TempH3FS8$Date.Time))
-TempH3FS8i<-filter(TempH3FS8, Hour>18)
-TempH3FS8f<-filter(TempH3FS8, Hour<7)
-TempH3FS8<-(rbind(TempH3FS8f,TempH3FS8i))
-TempH3FS8$ID<-"H3FS8"
-TempH3FS8<-summarise(group_by(TempH3FS8, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-TempH4NFS10 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Temperatura/H4NFS10Tem.csv")
-TempH4NFS10$Date.Time<-dmy_hms(TempH4NFS10$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-TempH4NFS10<-mutate(TempH4NFS10, Hour=hour(TempH4NFS10$Date.Time))
-TempH4NFS10i<-filter(TempH4NFS10, Hour>18)
-TempH4NFS10f<-filter(TempH4NFS10, Hour<7)
-TempH4NFS10<-(rbind(TempH4NFS10f,TempH4NFS10i))
-TempH4NFS10$ID<-"H4NFS10"
-TempH4NFS10<-summarise(group_by(TempH4NFS10, ID), meanT = mean(Value), sdT = sd(Value), maxT=max(Value), minT=min(Value))
-
-Temperatures<-rbind(TempH2NFS8, TempH2NFS5, TempH5NFS2, TempH5NFS6, TempIB10, TempH2NFS9, TempH4FS8, TempH4NFS1, TempH4NFS5, TempH3FS8, TempH4NFS10)
-RESULTS<-left_join(RESULTS, BasalArea)
-RESULTS<-left_join(RESULTS, Temperatures)
-```
-
-```{r,echo=FALSE, warning=FALSE,message=FALSE}
-HumH2NFS8 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H2NFS8Hum.csv")
-HumH2NFS8$Date.Time<-dmy_hm(HumH2NFS8$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH2NFS8<-mutate(HumH2NFS8, Hour=hour(HumH2NFS8$Date.Time))
-HumH2NFS8i<-filter(HumH2NFS8, Hour>18)
-HumH2NFS8f<-filter(HumH2NFS8, Hour<7)
-HumH2NFS8<-(rbind(HumH2NFS8f,HumH2NFS8i))
-HumH2NFS8$ID<-"H2NFS8"
-HumH2NFS8<-summarise(group_by(HumH2NFS8, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumH2NFS5 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H2NFS5Hum.csv")
-HumH2NFS5$Date.Time<-dmy_hm(HumH2NFS5$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH2NFS5<-mutate(HumH2NFS5, Hour=hour(HumH2NFS5$Date.Time))
-HumH2NFS5i<-filter(HumH2NFS5, Hour>18)
-HumH2NFS5f<-filter(HumH2NFS5, Hour<7)
-HumH2NFS5<-(rbind(HumH2NFS5f,HumH2NFS5i))
-HumH2NFS5$ID<-"H2NFS5"
-HumH2NFS5<-summarise(group_by(HumH2NFS5, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumH5NFS2 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H5NFS2Hum.csv")
-HumH5NFS2$Date.Time<-dmy_hm(HumH5NFS2$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH5NFS2<-mutate(HumH5NFS2, Hour=hour(HumH5NFS2$Date.Time))
-HumH5NFS2i<-filter(HumH5NFS2, Hour>18)
-HumH5NFS2f<-filter(HumH5NFS2, Hour<7)
-HumH5NFS2<-(rbind(HumH5NFS2f,HumH5NFS2i))
-HumH5NFS2$ID<-"H5NFS2"
-HumH5NFS2<-summarise(group_by(HumH5NFS2, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumH5NFS6 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H5NFS6Hum.csv")
-HumH5NFS6$Date.Time<-dmy_hm(HumH5NFS6$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH5NFS6<-mutate(HumH5NFS6, Hour=hour(HumH5NFS6$Date.Time))
-HumH5NFS6i<-filter(HumH5NFS6, Hour>18)
-HumH5NFS6f<-filter(HumH5NFS6, Hour<7)
-HumH5NFS6<-(rbind(HumH5NFS6f,HumH5NFS6i))
-HumH5NFS6$ID<-"H5NFS6"
-HumH5NFS6<-summarise(group_by(HumH5NFS6, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumIB10 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/IB10Hum.csv")
-HumIB10$Date.Time<-dmy_hm(HumIB10$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumIB10<-mutate(HumIB10, Hour=hour(HumIB10$Date.Time))
-HumIB10i<-filter(HumIB10, Hour>18)
-HumIB10f<-filter(HumIB10, Hour<7)
-HumIB10<-(rbind(HumIB10f,HumIB10i))
-HumIB10$ID<-"IB10"
-HumIB10<-summarise(group_by(HumIB10, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumH2NFS9 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H2NFS9Hum.csv")
-HumH2NFS9$Date.Time<-dmy_hms(HumH2NFS9$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH2NFS9<-mutate(HumH2NFS9, Hour=hour(HumH2NFS9$Date.Time))
-HumH2NFS9i<-filter(HumH2NFS9, Hour>18)
-HumH2NFS9f<-filter(HumH2NFS9, Hour<7)
-HumH2NFS9<-(rbind(HumH2NFS9f,HumH2NFS9i))
-HumH2NFS9$ID<-"H2NFS9"
-HumH2NFS9<-summarise(group_by(HumH2NFS9, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumH4FS8 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H4FS8Hum.csv")
-HumH4FS8$Date.Time<-dmy_hms(HumH4FS8$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH4FS8<-mutate(HumH4FS8, Hour=hour(HumH4FS8$Date.Time))
-HumH4FS8i<-filter(HumH4FS8, Hour>18)
-HumH4FS8f<-filter(HumH4FS8, Hour<7)
-HumH4FS8<-(rbind(HumH4FS8f,HumH4FS8i))
-HumH4FS8$ID<-"H4FS8"
-HumH4FS8<-summarise(group_by(HumH4FS8, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumH4NFS1 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H4NFS1Hum.csv")
-HumH4NFS1$Date.Time<-dmy_hms(HumH4NFS1$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH4NFS1<-mutate(HumH4NFS1, Hour=hour(HumH4NFS1$Date.Time))
-HumH4NFS1i<-filter(HumH4NFS1, Hour>18)
-HumH4NFS1f<-filter(HumH4NFS1, Hour<7)
-HumH4NFS1<-(rbind(HumH4NFS1f,HumH4NFS1i))
-HumH4NFS1$ID<-"H4NFS1"
-HumH4NFS1<-summarise(group_by(HumH4NFS1, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumH4NFS5 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H4NFS5Hum.csv")
-HumH4NFS5$Date.Time<-dmy_hms(HumH4NFS5$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH4NFS5<-mutate(HumH4NFS5, Hour=hour(HumH4NFS5$Date.Time))
-HumH4NFS5i<-filter(HumH4NFS5, Hour>18)
-HumH4NFS5f<-filter(HumH4NFS5, Hour<7)
-HumH4NFS5<-(rbind(HumH4NFS5f,HumH4NFS5i))
-HumH4NFS5$ID<-"H4NFS5"
-HumH4NFS5<-summarise(group_by(HumH4NFS5, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumH3FS8 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H3FS8Hum.csv")
-HumH3FS8$Date.Time<-dmy_hms(HumH3FS8$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH3FS8<-mutate(HumH3FS8, Hour=hour(HumH3FS8$Date.Time))
-HumH3FS8i<-filter(HumH3FS8, Hour>18)
-HumH3FS8f<-filter(HumH3FS8, Hour<7)
-HumH3FS8<-(rbind(HumH3FS8f,HumH3FS8i))
-HumH3FS8$ID<-"H3FS8"
-HumH3FS8<-summarise(group_by(HumH3FS8, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-HumH4NFS10 <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/Humedad/H4NFS10Hum.csv")
-HumH4NFS10$Date.Time<-dmy_hms(HumH4NFS10$Date.Time)
-start.time<-hm("19:30")
-end.time<-hm("6:30")
-HumH4NFS10<-mutate(HumH4NFS10, Hour=hour(HumH4NFS10$Date.Time))
-HumH4NFS10i<-filter(HumH4NFS10, Hour>18)
-HumH4NFS10f<-filter(HumH4NFS10, Hour<7)
-HumH4NFS10<-(rbind(HumH4NFS10f,HumH4NFS10i))
-HumH4NFS10$ID<-"H4NFS10"
-HumH4NFS10<-summarise(group_by(HumH4NFS10, ID), meanHum = mean(Value), sdHum = sd(Value), maxHum=max(Value), minHum=min(Value))
-
-Humidity<-rbind(HumH2NFS8, HumH2NFS5, HumH5NFS2,HumH5NFS6,HumIB10, HumH2NFS9, HumH4FS8, HumH4NFS1, HumH4NFS5, HumH3FS8, HumH4NFS10)
-RESULTS<-left_join(RESULTS, Humidity)
+Dailycov <- read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/Dailycov.csv")
 ```
 
 #Results collected in the field 
 
-```{r results='asis',echo=FALSE}
-library(stargazer)
-#stargazer(RESULTS, type="latex")
-```
-
-#Results colleted with GIS layers
 
 ```{r, echo=FALSE}
 plot(Predictors)
 ```
 
 ```{r,echo=FALSE, warning=FALSE,message=FALSE}
-geopredict<-extract(Predictors, data.frame(RESULTS$LONG,RESULTS$LAT))
-RESULTS<-cbind(RESULTS, geopredict)
-write.csv(RESULTS, file = "geopredict.csv")
-#print(RESULTS)
-Result2<-(RESULTS[,c(1,c(23:30))])
-Number<-c(1:length(RESULTS[,1]))
-Result2<- cbind(Number,Result2)
+Result2<-read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/RESULTS2.csv")
 ```
 
-```{r results='asis',echo=FALSE}
-library(stargazer)
-#stargazer(Result2[,3:10], type="latex")
-```
 
-```{r,echo=FALSE, message=FALSE,warning=FALSE, results='asis'}
-Dailycov <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Bats_California/Rbats/Dailycov.csv")
 
-Dailycov<-left_join (RESULTS, Dailycov)
-Dailycov<-Dailycov[,-c(1:31)]
-Julian<-Dailycov[,1:3]
-Max.hum<-Dailycov[,4:6]
-Max.temp<-Dailycov[,7:9]
-Mean.hum<-Dailycov[,10:12]
-Mean.temp<-Dailycov[,13:15]
-Min.hum<-Dailycov[,16:18]
-Min.temp<-Dailycov[,19:21]
-Sd.hum<-Dailycov[,22:24]
-Sd.temp<-Dailycov[,25:27]
-
-Dailycov<- list(Julian,Max.hum, Max.temp, Mean.hum,Mean.temp, Min.hum, Min.temp, Sd.hum, Sd.temp)
-names(Dailycov) <- c("Julian", "Maxhum","Maxtemp","Meanhum", "Meantemp","Minhum","Mintemp","sdhum","sdtemp")
-```
 
 #Maps showing the sampled Points
 
@@ -521,7 +152,7 @@ In this area 0 means absence, and 1 means prescence. This table has for each sit
 - *Eumops perotis* (Eupe)
 
 ```{r,echo=FALSE, warning=FALSE,message=FALSE}
-BatOccu <- read.csv("/media/derek/7ABAD452BAD40C8F/Users/usuario/Documents/Missouri post doc/Results/BatOccu.csv")
+BatOccu <- read.csv("~/Documents/new_bats/Rnew_bats/BatOccu.csv")
 #print(BatOccu)
 ```
 
@@ -540,9 +171,6 @@ BatOccuMyYu<-BatOccu[,2:4]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuMyYu2<-unmarkedFrameOccu(y = BatOccuMyYu, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.My.Yu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyYu2)
@@ -591,9 +219,7 @@ BatOccuMyCa<-BatOccu[,5:7]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+
 SimOccuMyCa2<-unmarkedFrameOccu(y = BatOccuMyCa, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.My.Ca2 <- occu(~ Julian +  Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyCa2)
@@ -640,10 +266,6 @@ BatOccuMyCi<-BatOccu[,8:10]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-write.csv(sampling.cov2, file = "covariables.csv")
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuMyCi2<-unmarkedFrameOccu(y = BatOccuMyCi, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.My.Ci2 <- occu(~ Julian+ Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyCi2)
@@ -691,9 +313,6 @@ BatOccuMyVo<-BatOccu[,11:13]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuMyVo2<-unmarkedFrameOccu(y = BatOccuMyVo, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.My.Vo2 <- occu(~ Julian + Meanhum + Meantemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyVo2)
@@ -1515,22 +1134,3 @@ points(RESULTS$LONG, RESULTS$LAT, cex=0.5)
 map.scale(-120.7, 39.5, relwidth = 0.15, metric = TRUE, ratio = FALSE,cex=0.7)
 ```
 
-#Create data products
-
-```{r, echo=FALSE}
-
-str(sampling.cov2)
-str(data.frame(sampling.cov3))
-writeRaster(roaddist.r, filename = "Bats_data_products/roaddist.asc", format="ascii", overwrite=TRUE)
-writeRaster(riverdist.r, filename = "Bats_data_products/riverdist.asc", format="ascii", overwrite=TRUE)
-writeRaster(fire, filename = "Bats_data_products/fire.asc", format="ascii", overwrite=TRUE)
-writeRaster(not.fire, filename = "Bats_data_products/not_fire.asc", format="ascii", overwrite=TRUE)
-writeRaster(Vegetation_existing, filename = "Bats_data_products/Vegetation_existing.asc", format="ascii", overwrite=TRUE)
-writeRaster(FireReturnAll, filename = "Bats_data_products/FireReturnAll.asc", format="ascii", overwrite=TRUE)
-writeRaster(topo, filename = "Bats_data_products/topo.asc", format="ascii", overwrite=TRUE)
-writeRaster(bs, filename = "Bats_data_products/bs.asc", format="ascii", overwrite=TRUE)
-writeRaster(bb, filename = "Bats_data_products/bb.asc", format="ascii", overwrite=TRUE)
-writeRaster(bc, filename = "Bats_data_products/bc.asc", format="ascii", overwrite=TRUE)
-write.csv(sampling.cov2, "Bats_data_products/sampling.cov2.csv")
-write.csv(Dailycov, "Bats_data_products/Dailycov.csv")
-```

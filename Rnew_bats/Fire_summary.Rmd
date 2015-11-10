@@ -96,6 +96,7 @@ names(Predictors)<-c("Distance to water", "Distance to road", "Existing vegetati
 ```{r, echo=FALSE}
 #then add the data
 RESULTS <- read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/RESULTS.csv")
+RESULTS <- RESULTS[,-1]
 RESULTS$START.DATE<- dmy(as.character(RESULTS$START.DATE), tz = "America/Los_Angeles")
 RESULTS$END.DATE<- dmy(as.character(RESULTS$END.DATE), tz = "America/Los_Angeles")
 ```
@@ -103,6 +104,23 @@ RESULTS$END.DATE<- dmy(as.character(RESULTS$END.DATE), tz = "America/Los_Angeles
 
 ```{r,echo=FALSE, warning=FALSE,message=FALSE}
 Dailycov <- read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/Dailycov.csv")
+Dailycov <- Dailycov [,-1]
+
+Julian<-Dailycov[,1:3]
+Max.hum<-Dailycov[,4:6]
+Max.temp<-Dailycov[,7:9]
+Mean.hum<-Dailycov[,10:12]
+Mean.temp<-Dailycov[,13:15]
+Min.hum<-Dailycov[,16:18]
+Min.temp<-Dailycov[,19:21]
+Sd.hum<-Dailycov[,22:24]
+Sd.temp<-Dailycov[,25:27]
+
+Dailycov<- list(Julian,Max.hum, Max.temp, Mean.hum,Mean.temp, Min.hum, Min.temp, Sd.hum, Sd.temp)
+names(Dailycov) <- c("Julian", "Maxhum","Maxtemp","Meanhum", "Meantemp","Minhum","Mintemp","sdhum","sdtemp")
+sampling.cov2 <- read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/sampling.cov2.csv")
+sampling.cov2<- sampling.cov2[,-1]
+sampling.cov2<- data.frame(sampling.cov2)
 ```
 
 #Results collected in the field 
@@ -114,6 +132,7 @@ plot(Predictors)
 
 ```{r,echo=FALSE, warning=FALSE,message=FALSE}
 Result2<-read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/RESULTS2.csv")
+Result2<- Result2[,-1]
 ```
 
 
@@ -161,7 +180,7 @@ BatOccu <- read.csv("~/Documents/new_bats/Rnew_bats/BatOccu.csv")
 ##Yuma myotis (*Myotis yumanensis*)
 
 ```{r, echo=FALSE,message=FALSE}
-library("unmarked", lib.loc="~/R/win-library/3.2")
+library(unmarked)
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
@@ -207,7 +226,7 @@ pairs (yuma.stack)
 
 
 ```{r, echo=FALSE,message=FALSE}
-library("unmarked", lib.loc="~/R/win-library/3.2")
+library(unmarked)
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
@@ -352,10 +371,6 @@ BatOccuMyLu<-BatOccu[,14:16]
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
-#N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuMyLu2<-unmarkedFrameOccu(y = BatOccuMyLu, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.My.Lu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyLu2)
@@ -398,9 +413,7 @@ BatOccuLaBl<-BatOccu[,20:22]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+
 SimOccuLaBl2<-unmarkedFrameOccu(y = BatOccuLaBl, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.La.Bl2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal ,SimOccuLaBl2)
@@ -447,9 +460,7 @@ BatOccuMyEv<-BatOccu[,23:25]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+
 SimOccuMyEv2<-unmarkedFrameOccu(y = BatOccuMyEv, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.My.Ev2 <- occu(~ Julian + Meanhum + Meantemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyEv2)
@@ -492,9 +503,7 @@ BatOccuAnPa<-BatOccu[,26:28]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+
 SimOccuAnPa2<-unmarkedFrameOccu(y = BatOccuAnPa, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.An.Pa2 <- occu(~ Julian +Meanhum + Meantemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuAnPa2)
@@ -537,9 +546,6 @@ BatOccuMyTh<-BatOccu[,35:37]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuMyTh2<-unmarkedFrameOccu(y = BatOccuMyTh, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.My.Th2 <- occu(~ Julian +Meanhum + Meantemp + sdhum + sdtemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyTh2)
@@ -580,9 +586,6 @@ BatOccuCoTo<-BatOccu[,44:46]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuCoTo2<-unmarkedFrameOccu(y = BatOccuCoTo, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.Co.To2 <- occu(~ Julian + Meanhum + Meantemp  ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuCoTo2)
@@ -623,9 +626,6 @@ BatOccuPaHe<-BatOccu[,17:19]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuPaHe2<-unmarkedFrameOccu(y = BatOccuPaHe, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 
@@ -667,9 +667,6 @@ BatOccuEpFu<-BatOccu[,29:31]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuEpFu2<-unmarkedFrameOccu(y = BatOccuEpFu, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.Ep.Fu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuEpFu2)
@@ -710,9 +707,6 @@ BatOccuLaNo<-BatOccu[,32:34]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuLaNo2<-unmarkedFrameOccu(y = BatOccuLaNo, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.La.No2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuLaNo2)
@@ -752,9 +746,6 @@ BatOccuTaBr<-BatOccu[,38:40]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuTaBr2<-unmarkedFrameOccu(y = BatOccuTaBr, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 
@@ -796,9 +787,6 @@ BatOccuLaCi<-BatOccu[,41:43]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuLaCi2<-unmarkedFrameOccu(y = BatOccuLaCi, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.La.Ci2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuLaCi2)
@@ -838,9 +826,6 @@ BatOccuEuMa<-BatOccu[,47:49]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
 SimOccuEuMa2<-unmarkedFrameOccu(y = BatOccuEuMa, siteCovs =sampling.cov2, obsCovs=Dailycov)
 
 model.occu.Eu.Ma2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuEuMa2)
@@ -880,9 +865,7 @@ BatOccuEuPe<-BatOccu[,50:52]
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
-sampling.cov2<- data.frame(geopredict)
-sampling.cov2<- cbind(sampling.cov2, RESULTS[,6:14])
-colnames(sampling.cov2)<- c("Distance.to.water","Distance.to.road","Existing.vegetation", "Fire.Interval", "Altitude", "Burn.intensity.soil","Burn.intensity.Canopy",  "Burn.intensity.basal", "Canopy.cover", "Woody", "Herbacious", "Grass", "Naked.Soil", "Rocky", "Down.Wood","Leaf.Litter", "Basal.Area")
+
 
 sampling.cov3<-data.frame(scale(sampling.cov2))
 SimOccuEuPe2<-unmarkedFrameOccu(y = BatOccuEuPe, siteCovs =sampling.cov3, obsCovs=Dailycov)
@@ -959,12 +942,11 @@ levelplot(FireBats, col.regions = rev(terrain.colors(99)), colorkey = list(space
 
 
 ```{r, echo=FALSE, cache=TRUE}
-df.bs1 <- data.frame(id=c(0,1,2,3,4,5), v=c(NA,1,1,1,1,1))
-fire <- subs(bs1, df.bs1,subswithNA=FALSE)
-fire<-projectRaster(fire, PNF)
+fire <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/fire.asc")
+fire<-raster (fire)
 
-df.bs2 <- data.frame(id=c(NA,1), v=c(1,NA))
-not.fire <- subs(fire, df.bs2,subswithNA=FALSE)
+not.fire <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/not_fire.asc")
+not.fire<-raster (not.fire)
 
 bats.with.fire<-FireBats*fire
 bats.without.fire<-FireBats*not.fire
@@ -1119,11 +1101,7 @@ vioplot(myyu,myci, mylu, labl, myev, anpa, coto, epfu, lano, tabr, eupe, col="gr
 
 #**The End**
 
-```{r, echo=FALSE, cache=TRUE}
-df.bs1 <- data.frame(id=c(0,1,2,3,4,5), v=c(0,1,1,1,1,1))
-fire <- subs(bs1, df.bs1,subswithNA=FALSE)
-fire<-projectRaster(fire, PNF)
-```
+
 
 ```{r,echo=FALSE, warning=FALSE,message=FALSE, cache=TRUE}
 

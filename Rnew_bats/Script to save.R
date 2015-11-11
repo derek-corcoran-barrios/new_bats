@@ -55,7 +55,56 @@ OB4<- cbind(day1,day2,day3)
 OB4 <- OB4[,order(names(OB4))]
 
 #################################################################################IB27
+sample <- filter(RESULTS, ID == "IB27")
 
-ID <- c("OB4")
+sample$START.DATE<-dmy(sample$START.DATE)
+sample$START.DATE<-sample$START.DATE + hours(19) + minutes(30)
 
-Replace<-cbind(ID, OB4)
+sample$END.DATE<-dmy(sample$END.DATE)
+sample$END.DATE<-sample$END.DATE + hours(6) + minutes(30)
+
+
+Hum <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/IB27Hum.csv")
+Temp <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/IB27Tem.csv")
+
+Hum<- Hum[,c(1,3)]
+Temp<- Temp[,c(1,3)]
+
+colnames(Hum)<-c("Time", "Humidity")
+colnames(Temp)<-c("Time", "Temperature")
+
+hum.and.temp<-left_join(Temp, Hum)
+hum.and.temp$Time<-dmy_hms(hum.and.temp$Time)
+hum.and.temp$Time<- hum.and.temp$Time+ hours(1)
+
+sample<-sample[,c(1,4,5)]
+sample$Start.1 <- sample$START.DATE
+sample$End.1 <- sample$END.DATE - days (2)
+sample$Start.2 <- sample$Start.1 + days (1)
+sample$End.2 <- sample$End.1 + days (1)
+sample$Start.3 <- sample$Start.2 + days (1)
+sample$End.3 <- sample$End.2 + days (1)
+sample <- sample[,-c(2,3)]
+
+day1 <- filter(hum.and.temp, Time >= sample$Start.1)
+day1 <- filter(day1, Time <= sample$End.1)
+
+day2 <- filter(hum.and.temp, Time >= sample$Start.2)
+day2 <- filter(day2, Time <= sample$End.2)
+
+day3 <- filter(hum.and.temp, Time >= sample$Start.3)
+day3 <- filter(day3, Time <= sample$End.3)
+
+day1 <-summarise(day1, mean.temp1 = mean(Temperature), sd.temp1 = sd(Temperature), max.temp1= max(Temperature), min.temp1= min(Temperature), mean.hum1 = mean(Humidity), sd.hum1 = sd(Humidity), max.hum1= max(Humidity), min.hum1= min(Humidity), Julian1 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day2 <-summarise(day2, mean.temp2 = mean(Temperature), sd.temp2 = sd(Temperature), max.temp2= max(Temperature), min.temp2= min(Temperature), mean.hum2 = mean(Humidity), sd.hum2 = sd(Humidity), max.hum2= max(Humidity), min.hum2= min(Humidity), Julian2 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day3 <-summarise(day3, mean.temp3 = mean(Temperature), sd.temp3 = sd(Temperature), max.temp3= max(Temperature), min.temp3= min(Temperature), mean.hum3 = mean(Humidity), sd.hum3 = sd(Humidity), max.hum3= max(Humidity), min.hum3= min(Humidity), Julian3 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+
+IB27<- cbind(day1,day2,day3)
+
+IB27 <- IB27[,order(names(IB27))]
+
+ID <- c("OB4", "IB27")
+
+replace<-rbind(OB4, IB27)
+
+Replace<-cbind(ID, replace)

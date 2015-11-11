@@ -1,0 +1,220 @@
+---
+title: "Script to save"
+author: "Derek Corcoran"
+date: "November 10, 2015"
+output: html_document
+---
+```{r, echo=FALSE}
+library(lubridate)
+library(dplyr)
+library(knitr)
+```
+
+```{r, echo=FALSE, cache=FALSE}
+RESULTS <- read.csv("~/Documents/new_bats/Rnew_bats/RESULTS.csv")
+
+#######################################################OB4
+
+sample <- filter(RESULTS, ID == "OB4")
+
+sample$START.DATE<-dmy(sample$START.DATE)
+sample$START.DATE<-sample$START.DATE + hours(19) + minutes(30)
+
+sample$END.DATE<-dmy(sample$END.DATE)
+sample$END.DATE<-sample$END.DATE + hours(6) + minutes(30)
+
+Hum <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/OB4AHum.csv")
+Temp <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/OB4ATem.csv")
+
+Hum<- Hum[,c(1,3)]
+Temp<- Temp[,c(1,3)]
+
+colnames(Hum)<-c("Time", "Humidity")
+colnames(Temp)<-c("Time", "Temperature")
+
+hum.and.temp<-left_join(Temp, Hum)
+hum.and.temp$Time<-dmy_hms(hum.and.temp$Time)
+hum.and.temp$Time<- hum.and.temp$Time+ hours(1)
+
+sample<-sample[,c(1,4,5)]
+sample$Start.1 <- sample$START.DATE
+sample$End.1 <- sample$END.DATE - days (2)
+sample$Start.2 <- sample$Start.1 + days (1)
+sample$End.2 <- sample$End.1 + days (1)
+sample$Start.3 <- sample$Start.2 + days (1)
+sample$End.3 <- sample$End.2 + days (1)
+sample <- sample[,-c(2,3)]
+
+day1 <- filter(hum.and.temp, Time >= sample$Start.1)
+day1 <- filter(day1, Time <= sample$End.1)
+
+day2 <- filter(hum.and.temp, Time >= sample$Start.2)
+day2 <- filter(day2, Time <= sample$End.2)
+
+day3 <- filter(hum.and.temp, Time >= sample$Start.3)
+day3 <- filter(day3, Time <= sample$End.3)
+
+day1 <-summarise(day1, mean.temp1 = mean(Temperature), sd.temp1 = sd(Temperature), max.temp1= max(Temperature), min.temp1= min(Temperature), mean.hum1 = mean(Humidity), sd.hum1 = sd(Humidity), max.hum1= max(Humidity), min.hum1= min(Humidity), Julian1 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day2 <-summarise(day2, mean.temp2 = mean(Temperature), sd.temp2 = sd(Temperature), max.temp2= max(Temperature), min.temp2= min(Temperature), mean.hum2 = mean(Humidity), sd.hum2 = sd(Humidity), max.hum2= max(Humidity), min.hum2= min(Humidity), Julian2 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day3 <-summarise(day3, mean.temp3 = mean(Temperature), sd.temp3 = sd(Temperature), max.temp3= max(Temperature), min.temp3= min(Temperature), mean.hum3 = mean(Humidity), sd.hum3 = sd(Humidity), max.hum3= max(Humidity), min.hum3= min(Humidity), Julian3 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+
+OB4<- cbind(day1,day2,day3)
+
+OB4 <- OB4[,order(names(OB4))]
+```
+
+```{r, echo=FALSE, cache=FALSE}
+sample.ib27 <- filter(RESULTS, ID == "IB27")
+
+sample.ib27$START.DATE<-dmy(sample.ib27$START.DATE)
+sample.ib27$START.DATE<-sample.ib27$START.DATE + hours(19) + minutes(30)
+
+sample.ib27$END.DATE<-dmy(sample.ib27$END.DATE)
+sample.ib27$END.DATE<-sample.ib27$END.DATE + hours(6) + minutes(30)
+
+Hum.ib27 <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/IB27Hum.csv")
+Temp.ib27 <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/IB27Tem.csv")
+
+Hum.ib27<- Hum.ib27[,c(1,3)]
+Temp.ib27<- Temp.ib27[,c(1,3)]
+
+colnames(Hum.ib27)<-c("Time", "Humidity")
+colnames(Temp.ib27)<-c("Time", "Temperature")
+
+hum.and.temp.ib27<-left_join(Temp.ib27, Hum.ib27)
+hum.and.temp.ib27$Time<-dmy_hms(hum.and.temp.ib27$Time)
+hum.and.temp.ib27$Time<- hum.and.temp.ib27$Time+ hours(1)
+
+sample.ib27<-sample.ib27[,c(1,4,5)]
+sample.ib27$Start.1 <- sample.ib27$START.DATE
+sample.ib27$End.1 <- sample.ib27$END.DATE - days (2)
+sample.ib27$Start.2 <- sample.ib27$Start.1 + days (1)
+sample.ib27$End.2 <- sample.ib27$End.1 + days (1)
+sample.ib27$Start.3 <- sample.ib27$Start.2 + days (1)
+sample.ib27$End.3 <- sample.ib27$End.2 + days (1)
+sample.ib27 <- sample.ib27[,-c(2,3)]
+
+day1.ib27 <- filter(hum.and.temp.ib27, Time >= sample.ib27$Start.1)
+day1.ib27 <- filter(day1.ib27, Time <= sample.ib27$End.1)
+
+day2.ib27 <- filter(hum.and.temp.ib27, Time >= sample.ib27$Start.2)
+day2.ib27 <- filter(day2.ib27, Time <= sample.ib27$End.2)
+
+day3.ib27 <- filter(hum.and.temp.ib27, Time >= sample.ib27$Start.3)
+day3.ib27 <- filter(day3.ib27, Time <= sample.ib27$End.3)
+
+day1.ib27 <-summarise(day1.ib27, mean.temp1 = mean(Temperature), sd.temp1 = sd(Temperature), max.temp1= max(Temperature), min.temp1= min(Temperature), mean.hum1 = mean(Humidity), sd.hum1 = sd(Humidity), max.hum1= max(Humidity), min.hum1= min(Humidity), Julian1 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day2.ib27 <-summarise(day2.ib27, mean.temp2 = mean(Temperature), sd.temp2 = sd(Temperature), max.temp2= max(Temperature), min.temp2= min(Temperature), mean.hum2 = mean(Humidity), sd.hum2 = sd(Humidity), max.hum2= max(Humidity), min.hum2= min(Humidity), Julian2 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day3.ib27 <-summarise(day3.ib27, mean.temp3 = mean(Temperature), sd.temp3 = sd(Temperature), max.temp3= max(Temperature), min.temp3= min(Temperature), mean.hum3 = mean(Humidity), sd.hum3 = sd(Humidity), max.hum3= max(Humidity), min.hum3= min(Humidity), Julian3 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+
+IB27<- cbind(day1.ib27,day2.ib27,day3.ib27)
+
+IB27 <- IB27[,order(names(IB27))]
+```
+
+```{r, echo=FALSE, cache=FALSE}
+sample.h1fs8 <- filter(RESULTS, ID == "H1FS8")
+
+sample.h1fs8$START.DATE<-dmy(sample.h1fs8$START.DATE)
+sample.h1fs8$START.DATE<-sample.h1fs8$START.DATE + hours(19) + minutes(30)
+
+sample.h1fs8$END.DATE<-dmy(sample.h1fs8$END.DATE)
+sample.h1fs8$END.DATE<-sample.h1fs8$END.DATE + hours(6) + minutes(30)
+
+Hum.h1fs8 <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/H1FS8Hum.csv")
+Temp.h1fs8 <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/H1FS8Tem.csv")
+
+Hum.h1fs8<- Hum.h1fs8[,c(1,3)]
+Temp.h1fs8<- Temp.h1fs8[,c(1,3)]
+
+colnames(Hum.h1fs8)<-c("Time", "Humidity")
+colnames(Temp.h1fs8)<-c("Time", "Temperature")
+
+hum.and.temp.h1fs8<-left_join(Temp.h1fs8, Hum.h1fs8)
+hum.and.temp.h1fs8$Time<-dmy_hms(hum.and.temp.h1fs8$Time)
+hum.and.temp.h1fs8$Time<- hum.and.temp.h1fs8$Time+ hours(1)
+
+sample.h1fs8<-sample.h1fs8[,c(1,4,5)]
+sample.h1fs8$Start.1 <- sample.h1fs8$START.DATE
+sample.h1fs8$End.1 <- sample.h1fs8$END.DATE - days (2)
+sample.h1fs8$Start.2 <- sample.h1fs8$Start.1 + days (1)
+sample.h1fs8$End.2 <- sample.h1fs8$End.1 + days (1)
+sample.h1fs8$Start.3 <- sample.h1fs8$Start.2 + days (1)
+sample.h1fs8$End.3 <- sample.h1fs8$End.2 + days (1)
+sample.h1fs8 <- sample.h1fs8[,-c(2,3)]
+
+day1.h1fs8 <- filter(hum.and.temp.h1fs8, Time >= sample.h1fs8$Start.1)
+day1.h1fs8 <- filter(day1.h1fs8, Time <= sample.h1fs8$End.1)
+
+day2.h1fs8 <- filter(hum.and.temp.h1fs8, Time >= sample.h1fs8$Start.2)
+day2.h1fs8 <- filter(day2.h1fs8, Time <= sample.h1fs8$End.2)
+
+day3.h1fs8 <- filter(hum.and.temp.h1fs8, Time >= sample.h1fs8$Start.3)
+day3.h1fs8 <- filter(day3.h1fs8, Time <= sample.h1fs8$End.3)
+
+day1.h1fs8 <-summarise(day1.h1fs8, mean.temp1 = mean(Temperature), sd.temp1 = sd(Temperature), max.temp1= max(Temperature), min.temp1= min(Temperature), mean.hum1 = mean(Humidity), sd.hum1 = sd(Humidity), max.hum1= max(Humidity), min.hum1= min(Humidity), Julian1 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day2.h1fs8 <-summarise(day2.h1fs8, mean.temp2 = mean(Temperature), sd.temp2 = sd(Temperature), max.temp2= max(Temperature), min.temp2= min(Temperature), mean.hum2 = mean(Humidity), sd.hum2 = sd(Humidity), max.hum2= max(Humidity), min.hum2= min(Humidity), Julian2 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day3.h1fs8 <-summarise(day3.h1fs8, mean.temp3 = mean(Temperature), sd.temp3 = sd(Temperature), max.temp3= max(Temperature), min.temp3= min(Temperature), mean.hum3 = mean(Humidity), sd.hum3 = sd(Humidity), max.hum3= max(Humidity), min.hum3= min(Humidity), Julian3 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+
+h1fs8<- cbind(day1.h1fs8,day2.h1fs8,day3.h1fs8)
+
+h1fs8 <- h1fs8[,order(names(h1fs8))]
+```
+
+
+```{r, echo=FALSE, cache=FALSE}
+sample.h3nfs10 <- filter(RESULTS, ID == "H3NFS10")
+
+sample.h3nfs10$START.DATE<-dmy(sample.h3nfs10$START.DATE)
+sample.h3nfs10$START.DATE<-sample.h3nfs10$START.DATE + hours(19) + minutes(30)
+
+sample.h3nfs10$END.DATE<-dmy(sample.h3nfs10$END.DATE)
+sample.h3nfs10$END.DATE<-sample.h3nfs10$END.DATE + hours(6) + minutes(30)
+
+Hum.h3nfs10 <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/H3NFS10Hum.csv")
+Temp.h3nfs10 <- read.csv("~/Documents/new_bats/Rnew_bats/T & H/H3NFS10Tem.csv")
+
+Hum.h3nfs10<- Hum.h3nfs10[,c(1,3)]
+Temp.h3nfs10<- Temp.h3nfs10[,c(1,3)]
+
+colnames(Hum.h3nfs10)<-c("Time", "Humidity")
+colnames(Temp.h3nfs10)<-c("Time", "Temperature")
+
+hum.and.temp.h3nfs10<-left_join(Temp.h3nfs10, Hum.h3nfs10)
+hum.and.temp.h3nfs10$Time<-dmy_hms(hum.and.temp.h3nfs10$Time)
+hum.and.temp.h3nfs10$Time<- hum.and.temp.h3nfs10$Time+ hours(1)
+
+sample.h3nfs10<-sample.h3nfs10[,c(1,4,5)]
+sample.h3nfs10$Start.1 <- sample.h3nfs10$START.DATE
+sample.h3nfs10$End.1 <- sample.h3nfs10$END.DATE - days (2)
+sample.h3nfs10$Start.2 <- sample.h3nfs10$Start.1 + days (1)
+sample.h3nfs10$End.2 <- sample.h3nfs10$End.1 + days (1)
+sample.h3nfs10$Start.3 <- sample.h3nfs10$Start.2 + days (1)
+sample.h3nfs10$End.3 <- sample.h3nfs10$End.2 + days (1)
+sample.h3nfs10 <- sample.h3nfs10[,-c(2,3)]
+
+day1.h3nfs10 <- filter(hum.and.temp.h3nfs10, Time >= sample.h3nfs10$Start.1)
+day1.h3nfs10 <- filter(day1.h3nfs10, Time <= sample.h3nfs10$End.1)
+
+day2.h3nfs10 <- filter(hum.and.temp.h3nfs10, Time >= sample.h3nfs10$Start.2)
+day2.h3nfs10 <- filter(day2.h3nfs10, Time <= sample.h3nfs10$End.2)
+
+day3.h3nfs10 <- filter(hum.and.temp.h3nfs10, Time >= sample.h3nfs10$Start.3)
+day3.h3nfs10 <- filter(day3.h3nfs10, Time <= sample.h3nfs10$End.3)
+
+day1.h3nfs10 <-summarise(day1.h3nfs10, mean.temp1 = mean(Temperature), sd.temp1 = sd(Temperature), max.temp1= max(Temperature), min.temp1= min(Temperature), mean.hum1 = mean(Humidity), sd.hum1 = sd(Humidity), max.hum1= max(Humidity), min.hum1= min(Humidity), Julian1 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day2.h3nfs10 <-summarise(day2.h3nfs10, mean.temp2 = mean(Temperature), sd.temp2 = sd(Temperature), max.temp2= max(Temperature), min.temp2= min(Temperature), mean.hum2 = mean(Humidity), sd.hum2 = sd(Humidity), max.hum2= max(Humidity), min.hum2= min(Humidity), Julian2 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+day3.h3nfs10 <-summarise(day3.h3nfs10, mean.temp3 = mean(Temperature), sd.temp3 = sd(Temperature), max.temp3= max(Temperature), min.temp3= min(Temperature), mean.hum3 = mean(Humidity), sd.hum3 = sd(Humidity), max.hum3= max(Humidity), min.hum3= min(Humidity), Julian3 = mean(as.numeric(julian(Time, origin = as.Date ("2015-01-01")))))
+
+h3nfs10<- cbind(day1.h3nfs10,day2.h3nfs10,day3.h3nfs10)
+
+h3nfs10 <- h3nfs10[,order(names(h3nfs10))]
+```
+
+```{r}
+replace<-rbind(OB4, IB27, h1fs8, h3nfs10)
+ID <- c("OB4","IB27", "H1FS8", "H3NFS10")
+Replace<-cbind(ID, replace)
+write.csv(Replace, "replace.csv")
+kable(Replace)
+````

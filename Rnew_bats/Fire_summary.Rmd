@@ -2,7 +2,7 @@
 title: "Fire_summary"
 author: "Derek Corcoran"
 date: "November 9, 2015"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -39,20 +39,20 @@ library(foreign)
 
 ```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide', cache=TRUE}
 #read rasters
-PNF<- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/PNF.asc")
+PNF<- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/PNF.asc")
 PNF<-raster (PNF)
-bc <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/bc.asc")
+bc <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/bc.asc")
 bc<-raster (bc)
-bb <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/bb.asc")
+bb <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/bb.asc")
 bb<-raster (bb)
-bs <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/bs.asc")
+bs <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/bs.asc")
 bs<-raster (bs)
-topo <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/topo.asc")
+topo <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/topo.asc")
 topo<-raster (topo)
 topo<-topo*PNF
-Vegetation_existing <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/Vegetation_existing.asc")
+Vegetation_existing <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/Vegetation_existing.asc")
 Vegetation_existing<-raster (Vegetation_existing)
-FireReturnAll <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/FireReturnAll.asc")
+FireReturnAll <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/FireReturnAll.asc")
 FireReturnAll<-raster (FireReturnAll)
 ```
 
@@ -75,13 +75,13 @@ FireReturnAll<-raster (FireReturnAll)
 ```
 
 ```{r, echo=FALSE, results='hide', warning=FALSE, cache=TRUE}
-roaddist.r<- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/roaddist.asc")
+roaddist.r<- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/roaddist.asc")
 roaddist.r<-raster (roaddist.r)
 roaddist.r<- roaddist.r*PNF
 ```
 
 ```{r,echo=FALSE,warning=FALSE,message=FALSE,results='hide', cache=TRUE}
-riverdist.r<- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/riverdist.asc")
+riverdist.r<- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/riverdist.asc")
 riverdist.r<-raster (riverdist.r)
 riverdist.r<- riverdist.r*PNF
 riverdist.r<- riverdist.r*PNF
@@ -103,7 +103,7 @@ names(Predictors)<-c("Distance to water","Distance to water2" , "Distance to roa
 
 ```{r, echo=FALSE}
 #then add the data
-RESULTS <- read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/RESULTS.csv")
+RESULTS <- read.csv("~/new_bats/Rnew_bats/Bats_data_products/RESULTS.csv")
 RESULTS <- RESULTS[,-1]
 RESULTS$START.DATE<- dmy(as.character(RESULTS$START.DATE), tz = "America/Los_Angeles")
 RESULTS$END.DATE<- dmy(as.character(RESULTS$END.DATE), tz = "America/Los_Angeles")
@@ -111,7 +111,7 @@ RESULTS$END.DATE<- dmy(as.character(RESULTS$END.DATE), tz = "America/Los_Angeles
 
 
 ```{r,echo=FALSE, warning=FALSE,message=FALSE}
-Dailycov3 <- read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/Dailycov3.csv")
+Dailycov3 <- read.csv("~/new_bats/Rnew_bats/Bats_data_products/Dailycov3.csv")
 Dailycov3 <- Dailycov3 [,-1]
 
 Julian<-Dailycov3[,1:3]
@@ -126,7 +126,7 @@ Sd.temp<-Dailycov3[,25:27]
 
 Dailycov3<- list(Julian,Max.hum, Max.temp, Mean.hum,Mean.temp, Min.hum, Min.temp, Sd.hum, Sd.temp)
 names(Dailycov3) <- c("Julian", "Maxhum","Maxtemp","Meanhum", "Meantemp","Minhum","Mintemp","sdhum","sdtemp")
-sampling.cov2 <- read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/sampling.cov2.csv")
+sampling.cov2 <- read.csv("~/new_bats/Rnew_bats/Bats_data_products/sampling.cov2.csv")
 sampling.cov2<- sampling.cov2[,-1]
 sampling.cov2<- data.frame(sampling.cov2)
 sampling.cov2<- mutate(sampling.cov2, Burn.intensity.soil2 = Burn.intensity.soil^2, Burn.intensity.Canopy2 = Burn.intensity.Canopy^2, Burn.intensity.basal2 = Burn.intensity.basal^2)
@@ -142,7 +142,7 @@ plot(Predictors)
 ```
 
 ```{r,echo=FALSE, warning=FALSE,message=FALSE}
-Result2<-read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/RESULTS2.csv")
+Result2<-read.csv("~/new_bats/Rnew_bats/Bats_data_products/RESULTS2.csv")
 Result2<- Result2[,-1]
 ```
 
@@ -182,7 +182,7 @@ In this area 0 means absence, and 1 means prescence. This table has for each sit
 - *Eumops perotis* (Eupe)
 
 ```{r,echo=FALSE, warning=FALSE,message=FALSE}
-BatOccu <- read.csv("~/Documents/new_bats/Rnew_bats/BatOccu.csv")
+BatOccu <- read.csv("~/new_bats/Rnew_bats/BatOccu.csv")
 #print(BatOccu)
 ```
 
@@ -873,100 +873,105 @@ levelplot(FireBats, col.regions = rev(terrain.colors(99)), colorkey = list(space
 
 
 ```{r, echo=FALSE, cache=TRUE}
-fire <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/fire.asc")
+fire <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/fire.asc")
 fire<-raster (fire)
 
-not.fire <- readGDAL("~/Documents/new_bats/Rnew_bats/Bats_data_products/not_fire.asc")
+not.fire <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/not_fire.asc")
 not.fire<-raster (not.fire)
 
-bats.with.fire<-FireBats*fire
-bats.without.fire<-FireBats*not.fire
+fire<- reclassify(fire, cbind(0, NA))
 
-names(bats.with.fire)<-c("Yuma Myotis","Small Footed Myotis","Little Brown Bat", "Western Red Bat","Long-eared Bat" ,"Pallid Bat", "Townsend's big-eared Bat", "Big Brow Bat","Silver-Haired Bat", "Brazilian free-tailed bat", " western mastiff bat")
+plot(fire)
+plot(not.fire)
+
+bats.with.fire1<-FireBats*fire
+bats.without.fire1<-FireBats*not.fire
+
+names(bats.with.fire1)<-c("Yuma Myotis","Small Footed Myotis","Little Brown Bat", "Western Red Bat","Long-eared Bat" ,"Pallid Bat", "Townsend's big-eared Bat", "Big Brow Bat","Silver-Haired Bat", "Brazilian free-tailed bat", " western mastiff bat")
 
 
-names(bats.without.fire)<-c("Yuma Myotis","Small Footed Myotis","Little Brown Bat", "Western Red Bat","Long-eared Bat" ,"Pallid Bat", "Townsend's big-eared Bat", "Big Brow Bat","Silver-Haired Bat", "Brazilian free-tailed bat", " western mastiff bat")
+names(bats.without.fire1)<-c("Yuma Myotis","Small Footed Myotis","Little Brown Bat", "Western Red Bat","Long-eared Bat" ,"Pallid Bat", "Townsend's big-eared Bat", "Big Brow Bat","Silver-Haired Bat", "Brazilian free-tailed bat", " western mastiff bat")
 
-plot(bats.with.fire, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black", main= "Fire")
-plot(bats.without.fire, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black", main= "Not Fire")
+plot(bats.with.fire1, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black", main= "Fire")
+plot(bats.without.fire1, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black", main= "Not Fire")
 ```
 
 ```{r,echo=FALSE, cache=TRUE}
-levelplot(bats.with.fire, col.regions = rev(terrain.colors(99)), colorkey = list(space = "bottom"))
+levelplot(bats.with.fire1, col.regions = rev(terrain.colors(99)), colorkey = list(space = "bottom"))
 
-levelplot(bats.without.fire, col.regions = rev(terrain.colors(99)), colorkey = list(space = "bottom"))
+levelplot(bats.without.fire1, col.regions = rev(terrain.colors(99)), colorkey = list(space = "bottom"))
 ```
 
 ```{r, echo=FALSE, cache=TRUE}
-with.fire<-cellStats(bats.with.fire, 'mean', na.rm=TRUE)
-without.fire<-cellStats(bats.without.fire, 'mean', na.rm=TRUE)
-with.fire.sd <-cellStats(bats.with.fire, 'sd', na.rm=TRUE)
+with.fire1<-cellStats(bats.with.fire1, 'mean', na.rm=TRUE)
+without.fire1<-cellStats(bats.without.fire1, 'mean', na.rm=TRUE)
+with.fire.sd1<-cellStats(bats.with.fire1, 'sd', na.rm=TRUE)
 
-with.fire<-data.frame(with.fire)
-with.fire<-data.frame(with.fire)
-without.fire<-data.frame(without.fire)
+with.fire1<-data.frame(with.fire1)
+with.fire1<-data.frame(with.fire1)
+without.fire1<-data.frame(without.fire1)
 
-fire.response<-cbind(with.fire,without.fire, with.fire.sd)
-kable(fire.response, digits=2)
-write.csv(fire.response, file="Fire_response.csv")
+fire.response1<-cbind(with.fire1,without.fire1, with.fire.sd1)
+kable(fire.response1, digits=2)
+write.csv(fire.response1, file="Fire_response.csv")
 ```
 
 ```{r,echo=FALSE, cache=TRUE}
-myyu<-as.vector(subset(bats.with.fire,1))
+myyu<-as.vector(subset(bats.with.fire1,1))
 myyu<-myyu[!is.na(myyu)]
-t.test(myyu, alternative = "two.sided", mu = fire.response$without.fire[1])
-myyu <-(myyu-fire.response$without.fire[1])
+t.test(myyu, alternative = "two.sided", mu = fire.response1$without.fire[1])
+myyu <-(myyu-fire.response1$without.fire[1])
 
-myci<-as.vector(subset(bats.with.fire,2))
+myci<-as.vector(subset(bats.with.fire1,2))
 myci<-myci[!is.na(myci)]
-t.test(myci, alternative = "two.sided", mu = fire.response$without.fire[2])
-myci <-(myci-fire.response$without.fire[2])
+t.test(myci, alternative = "two.sided", mu = fire.response1$without.fire[2])
+myci <-(myci-fire.response1$without.fire[2])
 
-mylu<-as.vector(subset(bats.with.fire,3))
+mylu<-as.vector(subset(bats.with.fire1,3))
 mylu<-mylu[!is.na(mylu)]
-t.test(mylu, alternative = "two.sided", mu = fire.response$without.fire[3])
-mylu <-(mylu-fire.response$without.fire[3])
+t.test(mylu, alternative = "two.sided", mu = fire.response1$without.fire[3])
+mylu <-(mylu-fire.response1$without.fire[3])
 
-labl<-as.vector(subset(bats.with.fire,4))
+labl<-as.vector(subset(bats.with.fire1,4))
 labl<-labl[!is.na(labl)]
-t.test(labl, alternative = "two.sided", mu = fire.response$without.fire[4])
-labl <-(labl-fire.response$without.fire[4])
+t.test(labl, alternative = "two.sided", mu = fire.response1$without.fire[4])
+labl <-(labl-fire.response1$without.fire1[4])
 
-myev<-as.vector(subset(bats.with.fire,5))
+myev<-as.vector(subset(bats.with.fire1,5))
 myev<-myev[!is.na(myev)]
-t.test(myev, alternative = "two.sided", mu = fire.response$without.fire[5])
-myev <-(myev-fire.response$without.fire[5])
+t.test(myev, alternative = "two.sided", mu = fire.response1$without.fire[5])
+myev <-(myev-fire.response1$without.fire[5])
 
-anpa<-as.vector(subset(bats.with.fire,6))
+anpa<-as.vector(subset(bats.with.fire1,6))
 anpa<-anpa[!is.na(anpa)]
-t.test(anpa, alternative = "two.sided", mu = fire.response$without.fire[6])
-anpa <-(anpa-fire.response$without.fire[6])
+t.test(anpa, alternative = "two.sided", mu = fire.response1$without.fire[6])
+anpa <-(anpa-fire.response1$without.fire[6])
 
-coto<-as.vector(subset(bats.with.fire,7))
+coto<-as.vector(subset(bats.with.fire1,7))
 coto<-coto[!is.na(coto)]
-t.test(coto, alternative = "two.sided", mu = fire.response$without.fire[7])
-coto <-(coto-fire.response$without.fire[7])
+t.test(coto, alternative = "two.sided", mu = fire.response1$without.fire[7])
+coto <-(coto-fire.response1$without.fire[7])
 
-epfu<-as.vector(subset(bats.with.fire,8))
+epfu<-as.vector(subset(bats.with.fire1,8))
 epfu<-epfu[!is.na(epfu)]
-t.test(epfu, alternative = "two.sided", mu = fire.response$without.fire[8])
-epfu <-(epfu-fire.response$without.fire[8])
+t.test(epfu, alternative = "two.sided", mu = fire.response1$without.fire[8])
+epfu <-(epfu-fire.response1$without.fire[8])
 
-lano<-as.vector(subset(bats.with.fire,9))
+lano<-as.vector(subset(bats.with.fire1,9))
 lano<-lano[!is.na(lano)]
-t.test(lano, alternative = "two.sided", mu = fire.response$without.fire[9])
-lano <-(lano-fire.response$without.fire[9])
+t.test(lano, alternative = "two.sided", mu = fire.response1$without.fire[9])
+lano <-(lano-fire.response1$without.fire[9])
 
-tabr<-as.vector(subset(bats.with.fire,10))
+tabr<-as.vector(subset(bats.with.fire1,10))
 tabr<-tabr[!is.na(tabr)]
-t.test(tabr, alternative = "two.sided", mu = fire.response$without.fire[10])
-tabr <-(tabr-fire.response$without.fire[10])
+t.test(tabr, alternative = "two.sided", mu = fire.response1$without.fire[10])
+tabr <-(tabr-fire.response1$without.fire[10])
 
 
-eupe<-as.vector(subset(bats.with.fire,11))
+eupe<-as.vector(subset(bats.with.fire1,11))
 eupe<-eupe[!is.na(eupe)]
-t.test(eupe, alternative = "two.sided", mu = fire.response$without.fire[11])
-eupe <-(eupe-fire.response$without.fire[11])
+t.test(eupe, alternative = "two.sided", mu = fire.response1$without.fire[11])
+eupe <-(eupe-fire.response1$without.fire[11])
 
 br<-cbind.data.frame(myyu,myci, mylu, labl, myev, anpa, coto, epfu, lano, tabr, eupe)
 par(las = 2)
@@ -976,50 +981,50 @@ abline(h=0)
 ```
 
 ```{r,echo=FALSE, cache=TRUE}
-myyu2<- cbind.data.frame(myyu, rep("myyu", times=(length(myyu))))
-colnames(myyu2)<-c("Occu", "Species")
+myyu3<- cbind.data.frame(myyu, rep("myyu", times=(length(myyu))))
+colnames(myyu3)<-c("Occu", "Species")
 
-myci2<- cbind.data.frame(myci, rep("myci", times=(length(myci))))
-colnames(myci2)<-c("Occu", "Species")
+myci3<- cbind.data.frame(myci, rep("myci", times=(length(myci))))
+colnames(myci3)<-c("Occu", "Species")
 
-mylu2<- cbind.data.frame(mylu, rep("mylu", times=(length(mylu))))
-colnames(mylu2)<-c("Occu", "Species")
+mylu3<- cbind.data.frame(mylu, rep("mylu", times=(length(mylu))))
+colnames(mylu3)<-c("Occu", "Species")
 
-labl2<- cbind.data.frame(labl, rep("labl", times=(length(labl))))
-colnames(labl2)<-c("Occu", "Species")
+labl3<- cbind.data.frame(labl, rep("labl", times=(length(labl))))
+colnames(labl3)<-c("Occu", "Species")
 
-myev2<- cbind.data.frame(myev, rep("myev", times=(length(myev))))
-colnames(myev2)<-c("Occu", "Species")
+myev3<- cbind.data.frame(myev, rep("myev", times=(length(myev))))
+colnames(myev3)<-c("Occu", "Species")
 
-anpa2<- cbind.data.frame(anpa, rep("anpa", times=(length(anpa))))
-colnames(anpa2)<-c("Occu", "Species")
+anpa3<- cbind.data.frame(anpa, rep("anpa", times=(length(anpa))))
+colnames(anpa3)<-c("Occu", "Species")
 
-coto2<- cbind.data.frame(coto, rep("coto", times=(length(coto))))
-colnames(coto2)<-c("Occu", "Species")
+coto3<- cbind.data.frame(coto, rep("coto", times=(length(coto))))
+colnames(coto3)<-c("Occu", "Species")
 
-epfu2<- cbind.data.frame(epfu, rep("epfu", times=(length(epfu))))
-colnames(epfu2)<-c("Occu", "Species")
+epfu3<- cbind.data.frame(epfu, rep("epfu", times=(length(epfu))))
+colnames(epfu3)<-c("Occu", "Species")
 
-lano2<- cbind.data.frame(lano, rep("lano", times=(length(lano))))
-colnames(lano2)<-c("Occu", "Species")
+lano3<- cbind.data.frame(lano, rep("lano", times=(length(lano))))
+colnames(lano3)<-c("Occu", "Species")
 
-tabr2<- cbind.data.frame(tabr, rep("tabr", times=(length(tabr))))
-colnames(tabr2)<-c("Occu", "Species")
+tabr3<- cbind.data.frame(tabr, rep("tabr", times=(length(tabr))))
+colnames(tabr3)<-c("Occu", "Species")
 
-eupe2<- cbind.data.frame(eupe, rep("eupe", times=(length(eupe))))
-colnames(eupe2)<-c("Occu", "Species")
+eupe3<- cbind.data.frame(eupe, rep("eupe", times=(length(eupe))))
+colnames(eupe3)<-c("Occu", "Species")
 
-br2<- rbind(myyu2, myci2, mylu2, labl2, myev2, anpa2, coto2, epfu2, lano2, tabr2, eupe2)
-br2$Species<-as.factor(br2$Species)
+br3<- rbind(myyu3, myci3, mylu3, labl3, myev3, anpa3, coto3, epfu3, lano3, tabr3, eupe3)
+br3$Species<-as.factor(br3$Species)
 
-g<-ggplot(br2, aes(x=Species, y=Occu))
+g<-ggplot(br3, aes(x=Species, y=Occu))
 g+geom_jitter(alpha=0.2, aes(color=Species), position = position_jitter(width = 0.1))+theme_bw()+geom_violin(alpha=0.7, color="gray",scale = "width")+ stat_summary(fun.y=mean, geom="point", shape=18, size=3, color="black")+ geom_hline(yintercept = 0)+theme(legend.position="none")
 
 
 g+geom_violin(alpha=0.5, color="gray",scale = "width")+theme_bw()+ stat_summary(fun.y=mean, geom="point", shape=18, size=3, color="black")+ geom_hline(yintercept = 0)
 
 
-g<-ggplot(br2, aes(x=Species, y=Occu))
+g<-ggplot(br3, aes(x=Species, y=Occu))
 g+geom_jitter(alpha=0.2, aes(color="grey"), position = position_jitter(width = 0.1))+theme_bw()+geom_violin(alpha=0.7, color="gray",scale = "width")+ stat_summary(fun.y=mean, geom="point", shape=18, size=3, color="black")+ geom_hline(yintercept = 0)+theme(legend.position="none")
 
 ```
@@ -1326,4 +1331,30 @@ myres
 ```{r}
 Predictors
 summary(sampling.cov2)
+```
+
+```{r}
+
+Occu1.layer.MyLu2$layer.1
+
+plot(Predictors)
+names(Predictors)
+
+soil.fire.vector<-as.vector(subset(Predictors,11))
+canopy.fire.vector<-as.vector(subset(Predictors,13))
+basal.fire.vector<-as.vector(subset(Predictors,15))
+
+ 
+occu.vector<-as.vector(Occu1.layer.MyLu2$layer.1)
+
+fire.response.df <- cbind(soil.fire.vector, basal.fire.vector, canopy.fire.vector, occu.vector)
+
+summary(fire.response.df)
+
+plot(occu.vector~soil.fire.vector)
+
+plot(occu.vector~basal.fire.vector)
+
+plot(occu.vector~canopy.fire.vector)
+
 ```

@@ -1333,7 +1333,7 @@ Predictors
 summary(sampling.cov2)
 ```
 
-```{r}
+```{r, cache=TRUE}
 
 Occu1.layer.MyLu2$layer.1
 
@@ -1347,7 +1347,7 @@ basal.fire.vector<-as.vector(subset(Predictors,15))
  
 occu.vector<-as.vector(Occu1.layer.MyLu2$layer.1)
 
-fire.response.df <- cbind(soil.fire.vector, basal.fire.vector, canopy.fire.vector, occu.vector)
+fire.response.df <- data.frame(cbind(soil.fire.vector, basal.fire.vector, canopy.fire.vector, occu.vector))
 
 summary(fire.response.df)
 
@@ -1357,4 +1357,5 @@ plot(occu.vector~basal.fire.vector)
 
 plot(occu.vector~canopy.fire.vector)
 
+ggplot(fire.response.df, aes(canopy.fire.vector, occu.vector))+geom_point()+ggtitle('Occupancy of Little Brown Bat')+labs(x="Canopy burn intensity", y="Occupancy")+theme_bw()+geom_smooth()
 ```

@@ -89,8 +89,16 @@ riverdist.r<- riverdist.r*PNF
 ```
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
-Predictors <-stack(riverdist.r, roaddist.r, Vegetation_existing, FireReturnAll, topo, bs,bc, bb)
-names(Predictors)<-c("Distance to water", "Distance to road", "Existing vegetation","Fire Interval", "Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal")
+riverdist.r2 <- riverdist.r^2
+roaddist.r2 <- roaddist.r^2
+Vegetation_existing2<- Vegetation_existing^2
+FireReturnAll2<- FireReturnAll^2
+topo2<- topo^2
+bs2 <- bs^2
+bc2 <- bc^2
+bb2 <- bb^2
+Predictors <-stack(riverdist.r, riverdist.r2, roaddist.r, roaddist.r2, Vegetation_existing, Vegetation_existing2, FireReturnAll, FireReturnAll2, topo, topo2, bs, bs2,bc, bc2, bb, bb2)
+names(Predictors)<-c("Distance to water","Distance to water2" , "Distance to road","Distance to road2", "Existing vegetation","Existing vegetation2","Fire Interval","Fire Interval2", "Altitude", "Altitude2", "Burn intensity soil", "Burn intensity soil2","Burn intensity Canopy", "Burn intensity Canopy2", "Burn intensity basal","Burn intensity basal2")
 ```
 
 ```{r, echo=FALSE}
@@ -121,6 +129,9 @@ names(Dailycov3) <- c("Julian", "Maxhum","Maxtemp","Meanhum", "Meantemp","Minhum
 sampling.cov2 <- read.csv("~/Documents/new_bats/Rnew_bats/Bats_data_products/sampling.cov2.csv")
 sampling.cov2<- sampling.cov2[,-1]
 sampling.cov2<- data.frame(sampling.cov2)
+sampling.cov2<- mutate(sampling.cov2, Burn.intensity.soil2 = Burn.intensity.soil^2, Burn.intensity.Canopy2 = Burn.intensity.Canopy^2, Burn.intensity.basal2 = Burn.intensity.basal^2)
+
+
 ```
 
 #Results collected in the field 
@@ -183,30 +194,23 @@ BatOccu <- read.csv("~/Documents/new_bats/Rnew_bats/BatOccu.csv")
 library(unmarked)
 ```
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49a
 BatOccuMyYu<-BatOccu[,2:4]
-```
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
-#N=49
 SimOccuMyYu2<-unmarkedFrameOccu(y = BatOccuMyYu, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.My.Yu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyYu2)
+model.Occu1.My.Yu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~  Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal + I(Burn.intensity.basal^2),SimOccuMyYu2)
 
-select.My.Yu2 <- dredge(model.occu.My.Yu2, rank = "AICc")
-```
+select.My.Yu2 <- dredge(model.Occu1.My.Yu2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.My.Yu2<-get.models(select.My.Yu2, 1)[[1]]
-Occu.layer.MyYu2 <- predict(best.My.Yu2, type = "state", newdata=Predictors)
-```
+best2.My.Yu2<-get.models(select.My.Yu2, 1)[[1]]
+Occu1.layer.MyYu2 <- predict(best2.My.Yu2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
 brks= c(0, 0.1, 0.2, 0.3, 0.4,0.5, 0.6,0.7, 0.8,0.9, 1)
 cols <- rev(terrain.colors(10))
-Occu.layer.MyYu2<-Occu.layer.MyYu2*PNF
-plot(Occu.layer.MyYu2$layer.1, colNA="black", main="Occupancy estimation for Yuma Myotis",breaks=brks, lab.breaks=brks, col=cols, zlim=c(0,1))
+Occu1.layer.MyYu2<-Occu1.layer.MyYu2*PNF
+plot(Occu1.layer.MyYu2$layer.1, colNA="black", main="Occupancy estimation for Yuma Myotis",breaks=brks, lab.breaks=brks, col=cols, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -215,7 +219,7 @@ htmlreg(extract(subset(select.My.Yu2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-yuma.stack <- stack(bs,bc, bb, Occu.layer.MyYu2$layer.1)
+yuma.stack <- stack(bs,bc, bb, Occu1.layer.MyYu2$layer.1)
 
 names(yuma.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -241,20 +245,15 @@ BatOccuMyCa<-BatOccu[,5:7]
 
 SimOccuMyCa2<-unmarkedFrameOccu(y = BatOccuMyCa, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.My.Ca2 <- occu(~ Julian +  Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyCa2)
+model.Occu1.My.Ca2 <- occu(~ Julian +  Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal + I(Burn.intensity.basal^2), SimOccuMyCa2)
 
+select.My.Ca2 <- dredge(model.Occu1.My.Ca2, rank = "AICc")
 
-select.My.Ca2 <- dredge(model.occu.My.Ca2, rank = "AICc")
-```
+best2.My.Ca2<-get.models(select.My.Ca2, 1)[[1]]
+Occu1.layer.MyCa2 <- predict(best2.My.Ca2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.My.Ca2<-get.models(select.My.Ca2, 1)[[1]]
-Occu.layer.MyCa2 <- predict(best.My.Ca2, type = "state", newdata=Predictors)
-```
-
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.MyCa2<-Occu.layer.MyCa2*PNF
-plot(Occu.layer.MyCa2$layer.1, colNA="black", main="Occupancy estimation for California Bat",breaks=brks, col=cols,lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.MyCa2<-Occu1.layer.MyCa2*PNF
+plot(Occu1.layer.MyCa2$layer.1, colNA="black", main="Occupancy estimation for California Bat",breaks=brks, col=cols,lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -263,7 +262,7 @@ htmlreg(extract(subset(select.My.Ca2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-myca.stack <- stack(bs,bc, bb, Occu.layer.MyCa2$layer.1)
+myca.stack <- stack(bs,bc, bb, Occu1.layer.MyCa2$layer.1)
 
 names(myca.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -276,7 +275,6 @@ pairs (myca.stack)
 library(unmarked)
 ```
 
-
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
 #N=49
 BatOccuMyCi<-BatOccu[,8:10]
@@ -287,20 +285,16 @@ BatOccuMyCi<-BatOccu[,8:10]
 #N=49
 SimOccuMyCi2<-unmarkedFrameOccu(y = BatOccuMyCi, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.My.Ci2 <- occu(~ Julian+ Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyCi2)
+model.Occu1.My.Ci2 <- occu(~ Julian+ Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal + I(Burn.intensity.basal^2), SimOccuMyCi2)
 
 
-select.My.Ci2 <- dredge(model.occu.My.Ci2, rank = "AICc")
-```
+select.My.Ci2 <- dredge(model.Occu1.My.Ci2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.My.Ci2<-get.models(select.My.Ci2, 1)[[1]]
-Occu.layer.MyCi2 <- predict(best.My.Ci2, type = "state", newdata=Predictors)
-```
+best2.My.Ci2<-get.models(select.My.Ci2, 1)[[1]]
+Occu1.layer.MyCi2 <- predict(best2.My.Ci2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.MyCi2<-Occu.layer.MyCi2*PNF
-plot(Occu.layer.MyCi2$layer.1, colNA="black", main="Occupancy estimation for Western Small Footed Myotis",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.MyCi2<-Occu1.layer.MyCi2*PNF
+plot(Occu1.layer.MyCi2$layer.1, colNA="black", main="Occupancy estimation for Western Small Footed Myotis",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -309,7 +303,7 @@ htmlreg(extract(subset(select.My.Ci2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-myci.stack <- stack(bs,bc, bb, Occu.layer.MyCi2$layer.1)
+myci.stack <- stack(bs,bc, bb, Occu1.layer.MyCi2$layer.1)
 
 names(myci.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -334,19 +328,14 @@ BatOccuMyVo<-BatOccu[,11:13]
 #N=49
 SimOccuMyVo2<-unmarkedFrameOccu(y = BatOccuMyVo, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.My.Vo2 <- occu(~ Julian + Meanhum + Meantemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyVo2)
+model.Occu1.My.Vo2 <- occu(~ Julian + Meanhum + Meantemp ~  Burn.intensity.soil  + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyVo2)
 
-select.My.Vo2 <- dredge(model.occu.My.Vo2, rank = "AICc")
-```
+select.My.Vo2 <- dredge(model.Occu1.My.Vo2, rank = "AICc")
+best2.My.Vo2<-get.models(select.My.Vo2, 1)[[1]]
+Occu1.layer.MyVo2 <- predict(best2.My.Vo2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.My.Vo2<-get.models(select.My.Vo2, 1)[[1]]
-Occu.layer.MyVo2 <- predict(best.My.Vo2, type = "state", newdata=Predictors)
-```
-
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.MyVo2<-Occu.layer.MyVo2*PNF
-plot(Occu.layer.MyVo2$layer.1, colNA="black", main="Occupancy estimation for Hairy-winged bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.MyVo2<-Occu1.layer.MyVo2*PNF
+plot(Occu1.layer.MyVo2$layer.1, colNA="black", main="Occupancy estimation for Hairy-winged bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -355,7 +344,7 @@ htmlreg(extract(subset(select.My.Vo2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-myvo.stack <- stack(bs,bc, bb, Occu.layer.MyVo2$layer.1)
+myvo.stack <- stack(bs,bc, bb, Occu1.layer.MyVo2$layer.1)
 
 names(myvo.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -373,20 +362,16 @@ BatOccuMyLu<-BatOccu[,14:16]
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 SimOccuMyLu2<-unmarkedFrameOccu(y = BatOccuMyLu, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.My.Lu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyLu2)
+model.Occu1.My.Lu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal +I(Burn.intensity.basal^2), SimOccuMyLu2)
 
 
-select.My.Lu2 <- dredge(model.occu.My.Lu2, rank = "AICc")
-```
+select.My.Lu2 <- dredge(model.Occu1.My.Lu2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.My.Lu2<-get.models(select.My.Lu2, 1)[[1]]
-Occu.layer.MyLu2 <- predict(best.My.Lu2, type = "state", newdata=Predictors)
-```
+best2.My.Lu2<-get.models(select.My.Lu2, 1)[[1]]
+Occu1.layer.MyLu2 <- predict(best2.My.Lu2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.MyLu2<-Occu.layer.MyLu2*PNF
-plot(Occu.layer.MyLu2$layer.1, colNA="black", main="Occupancy estimation for Little Brown Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.MyLu2<-Occu1.layer.MyLu2*PNF
+plot(Occu1.layer.MyLu2$layer.1, colNA="black", main="Occupancy estimation for Little Brown Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -395,7 +380,7 @@ htmlreg(extract(subset(select.My.Lu2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-mylu.stack <- stack(bs,bc, bb, Occu.layer.MyLu2$layer.1)
+mylu.stack <- stack(bs,bc, bb, Occu1.layer.MyLu2$layer.1)
 
 names(mylu.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -416,19 +401,15 @@ BatOccuLaBl<-BatOccu[,20:22]
 
 SimOccuLaBl2<-unmarkedFrameOccu(y = BatOccuLaBl, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.La.Bl2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal ,SimOccuLaBl2)
+model.Occu1.La.Bl2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal + I(Burn.intensity.basal^2) ,SimOccuLaBl2)
 
-select.La.Bl2 <- dredge(model.occu.La.Bl2, rank = "AICc")
-```
+select.La.Bl2 <- dredge(model.Occu1.La.Bl2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.La.Bl2<-get.models(select.La.Bl2, 1)[[1]]
-Occu.layer.LaBl2 <- predict(best.La.Bl2, type = "state", newdata=Predictors)
-```
+best2.La.Bl2<-get.models(select.La.Bl2, 1)[[1]]
+Occu1.layer.LaBl2 <- predict(best2.La.Bl2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.LaBl2<-Occu.layer.LaBl2*PNF
-plot(Occu.layer.LaBl2$layer.1, colNA="black", main="Occupancy estimation for Western Red Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.LaBl2<-Occu1.layer.LaBl2*PNF
+plot(Occu1.layer.LaBl2$layer.1, colNA="black", main="Occupancy estimation for Western Red Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -437,7 +418,7 @@ htmlreg(extract(subset(select.La.Bl2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-labl.stack <- stack(bs,bc, bb, Occu.layer.LaBl2$layer.1)
+labl.stack <- stack(bs,bc, bb, Occu1.layer.LaBl2$layer.1)
 
 names(labl.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -455,28 +436,20 @@ BatOccuMyEv<-BatOccu[,23:25]
 ```
 
 
-
-###Total model
-
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 #N=49
 
 SimOccuMyEv2<-unmarkedFrameOccu(y = BatOccuMyEv, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.My.Ev2 <- occu(~ Julian + Meanhum + Meantemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyEv2)
+model.Occu1.My.Ev2 <- occu(~ Julian + Meanhum + Meantemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuMyEv2)
 
-select.My.Ev2 <- dredge(model.occu.My.Ev2, rank = "AICc")
-```
+select.My.Ev2 <- dredge(model.Occu1.My.Ev2, rank = "AICc")
 
+best2.My.Ev2<-get.models(select.My.Ev2, 1)[[1]]
+Occu1.layer.MyEv2 <- predict(best2.My.Ev2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.My.Ev2<-get.models(select.My.Ev2, 1)[[1]]
-Occu.layer.MyEv2 <- predict(best.My.Ev2, type = "state", newdata=Predictors)
-```
-
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.MyEv2<-Occu.layer.MyEv2*PNF
-plot(Occu.layer.MyEv2$layer.1, colNA="black", main="Occupancy estimation for Long Eared Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.MyEv2<-Occu1.layer.MyEv2*PNF
+plot(Occu1.layer.MyEv2$layer.1, colNA="black", main="Occupancy estimation for Long Eared Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -485,7 +458,7 @@ htmlreg(extract(subset(select.My.Ev2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-myev.stack <- stack(bs,bc, bb, Occu.layer.MyEv2$layer.1)
+myev.stack <- stack(bs,bc, bb, Occu1.layer.MyEv2$layer.1)
 
 names(myev.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -506,20 +479,15 @@ BatOccuAnPa<-BatOccu[,26:28]
 
 SimOccuAnPa2<-unmarkedFrameOccu(y = BatOccuAnPa, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.An.Pa2 <- occu(~ Julian +Meanhum + Meantemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuAnPa2)
+model.Occu1.An.Pa2 <- occu(~ Julian +Meanhum + Meantemp ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal + I(Burn.intensity.basal^2), SimOccuAnPa2)
 
+select.An.Pa2 <- dredge(model.Occu1.An.Pa2, rank = "AICc")
 
-select.An.Pa2 <- dredge(model.occu.An.Pa2, rank = "AICc")
-```
+best2.An.Pa2<-get.models(select.An.Pa2, 1)[[1]]
+Occu1.layer.AnPa2 <- predict(best2.An.Pa2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.An.Pa2<-get.models(select.An.Pa2, 1)[[1]]
-Occu.layer.AnPa2 <- predict(best.An.Pa2, type = "state", newdata=Predictors)
-```
-
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.AnPa2<-Occu.layer.AnPa2*PNF
-plot(Occu.layer.AnPa2$layer.1, colNA="black", main="Occupancy estimation for Pallid Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.AnPa2<-Occu1.layer.AnPa2*PNF
+plot(Occu1.layer.AnPa2$layer.1, colNA="black", main="Occupancy estimation for Pallid Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -528,7 +496,7 @@ htmlreg(extract(subset(select.An.Pa2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-anpa.stack <- stack(bs,bc, bb, Occu.layer.AnPa2$layer.1)
+anpa.stack <- stack(bs,bc, bb, Occu1.layer.AnPa2$layer.1)
 
 names(anpa.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -548,20 +516,16 @@ BatOccuMyTh<-BatOccu[,35:37]
 #N=49
 SimOccuMyTh2<-unmarkedFrameOccu(y = BatOccuMyTh, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.My.Th2 <- occu(~ Julian +Meanhum + Meantemp + sdhum + sdtemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal,SimOccuMyTh2)
+model.Occu1.My.Th2 <- occu(~ Julian +Meanhum + Meantemp + sdhum + sdtemp ~  Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal +I(Burn.intensity.basal^2) ,SimOccuMyTh2)
 
 
-select.My.Th2 <- dredge(model.occu.My.Th2, rank = "AICc")
-```
+select.My.Th2 <- dredge(model.Occu1.My.Th2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.My.Th2<-get.models(select.My.Th2, 1)[[1]]
-Occu.layer.MyTh2 <- predict(best.My.Th2, type = "state", newdata=Predictors)
-```
+best2.My.Th2<-get.models(select.My.Th2, 1)[[1]]
+Occu1.layer.MyTh2 <- predict(best2.My.Th2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.MyTh2<-Occu.layer.MyTh2*PNF
-plot(Occu.layer.MyTh2$layer.1, colNA="black", main="Occupancy estimation for Fringed Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.MyTh2<-Occu1.layer.MyTh2*PNF
+plot(Occu1.layer.MyTh2$layer.1, colNA="black", main="Occupancy estimation for Fringed Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -570,7 +534,7 @@ htmlreg(extract(subset(select.My.Th2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-myth.stack <- stack(bs,bc, bb, Occu.layer.MyTh2$layer.1)
+myth.stack <- stack(bs,bc, bb, Occu1.layer.MyTh2$layer.1)
 
 names(myth.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -588,20 +552,16 @@ BatOccuCoTo<-BatOccu[,44:46]
 #N=49
 SimOccuCoTo2<-unmarkedFrameOccu(y = BatOccuCoTo, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.Co.To2 <- occu(~ Julian + Meanhum + Meantemp  ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuCoTo2)
+model.Occu1.Co.To2 <- occu(~ Julian + Meanhum + Meantemp  ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal + I(Burn.intensity.basal^2), SimOccuCoTo2)
 
 
-select.Co.To2 <- dredge(model.occu.Co.To2, rank = "AICc")
-```
+select.Co.To2 <- dredge(model.Occu1.Co.To2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.Co.To2<-get.models(select.Co.To2, 1)[[1]]
-Occu.layer.CoTo2 <- predict(best.Co.To2, type = "state", newdata=Predictors)
-```
+best2.Co.To2<-get.models(select.Co.To2, 1)[[1]]
+Occu1.layer.CoTo2 <- predict(best2.Co.To2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.CoTo2<-Occu.layer.CoTo2*PNF
-plot(Occu.layer.CoTo2$layer.1, colNA="black", main="Occupancy estimation for Townsend big eared bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.CoTo2<-Occu1.layer.CoTo2*PNF
+plot(Occu1.layer.CoTo2$layer.1, colNA="black", main="Occupancy estimation for Townsend big eared bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -610,7 +570,7 @@ htmlreg(extract(subset(select.Co.To2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-coto.stack <- stack(bs,bc, bb, Occu.layer.CoTo2$layer.1)
+coto.stack <- stack(bs,bc, bb, Occu1.layer.CoTo2$layer.1)
 
 names(coto.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -629,20 +589,20 @@ BatOccuPaHe<-BatOccu[,17:19]
 SimOccuPaHe2<-unmarkedFrameOccu(y = BatOccuPaHe, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
 
-#model.occu.Pa.He2 <- occu(~ Julian + Meanhum + Meantemp  ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuPaHe2)
+#model.Occu1.Pa.He2 <- occu(~ Julian + Meanhum + Meantemp  ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + Burn.intensity.Canopy2 + Burn.intensity.basal +Burn.intensity.basal2, SimOccuPaHe2)
 
 
-#select.Pa.He2 <- dredge(model.occu.Pa.He2, rank = "AICc")
+#select.Pa.He2 <- dredge(model.Occu1.Pa.He2, rank = "AICc")
 ```
 
 ```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-#best.Pa.He2<-get.models(select.Pa.He2, 1)[[1]]
-#Occu.layer.PaHe2 <- predict(best.Pa.He2, type = "state", newdata=Predictors)
+#best2.Pa.He2<-get.models(select.Pa.He2, 1)[[1]]
+#Occu1.layer.PaHe2 <- predict(best2.Pa.He2, type = "state", newdata=Predictors)
 ```
 
 ```{r, echo=FALSE,warning=FALSE,message=FALSE}
-#Occu.layer.PaHe2<-Occu.layer.PaHe2*PNF
-#plot(Occu.layer.PaHe2$layer.1, colNA="black", main="Occupancy estimation for Pipistrel",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+#Occu1.layer.PaHe2<-Occu1.layer.PaHe2*PNF
+#plot(Occu1.layer.PaHe2$layer.1, colNA="black", main="Occupancy estimation for Pipistrel",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -651,7 +611,7 @@ SimOccuPaHe2<-unmarkedFrameOccu(y = BatOccuPaHe, siteCovs =sampling.cov2, obsCov
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-#pahe.stack <- stack(bs,bc, bb, Occu.layer.PaHe2$layer.1)
+#pahe.stack <- stack(bs,bc, bb, Occu1.layer.PaHe2$layer.1)
 
 #names(pahe.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -669,20 +629,16 @@ BatOccuEpFu<-BatOccu[,29:31]
 #N=49
 SimOccuEpFu2<-unmarkedFrameOccu(y = BatOccuEpFu, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.Ep.Fu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuEpFu2)
+model.Occu1.Ep.Fu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal +I(Burn.intensity.basal^2), SimOccuEpFu2)
 
 
-select.Ep.Fu2 <- dredge(model.occu.Ep.Fu2, rank = "AICc")
-```
+select.Ep.Fu2 <- dredge(model.Occu1.Ep.Fu2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.Ep.Fu2<-get.models(select.Ep.Fu2, 1)[[1]]
-Occu.layer.EpFu2 <- predict(best.Ep.Fu2, type = "state", newdata=Predictors)
-```
+best2.Ep.Fu2<-get.models(select.Ep.Fu2, 1)[[1]]
+Occu1.layer.EpFu2 <- predict(best2.Ep.Fu2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.EpFu2<-Occu.layer.EpFu2*PNF
-plot(Occu.layer.EpFu2$layer.1, colNA="black", main="Occupancy estimation for Big Brown Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.EpFu2<-Occu1.layer.EpFu2*PNF
+plot(Occu1.layer.EpFu2$layer.1, colNA="black", main="Occupancy estimation for Big Brown Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -691,7 +647,7 @@ htmlreg(extract(subset(select.Ep.Fu2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-epfu.stack <- stack(bs,bc, bb, Occu.layer.EpFu2$layer.1)
+epfu.stack <- stack(bs,bc, bb, Occu1.layer.EpFu2$layer.1)
 
 names(epfu.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -709,20 +665,16 @@ BatOccuLaNo<-BatOccu[,32:34]
 #N=49
 SimOccuLaNo2<-unmarkedFrameOccu(y = BatOccuLaNo, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.La.No2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~  Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuLaNo2)
+model.Occu1.La.No2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~  Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal + (Burn.intensity.basal^2), SimOccuLaNo2)
 
 
-select.La.No2 <- dredge(model.occu.La.No2, rank = "AICc")
-```
+select.La.No2 <- dredge(model.Occu1.La.No2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.La.No2<-get.models(select.La.No2, 1)[[1]]
-Occu.layer.LaNo2 <- predict(best.La.No2, type = "state", newdata=Predictors)
-```
+best2.La.No2<-get.models(select.La.No2, 1)[[1]]
+Occu1.layer.LaNo2 <- predict(best2.La.No2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.LaNo2<-Occu.layer.LaNo2*PNF
-plot(Occu.layer.LaNo2$layer.1, colNA="black", main="Occupancy estimation for Silver Haired Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.LaNo2<-Occu1.layer.LaNo2*PNF
+plot(Occu1.layer.LaNo2$layer.1, colNA="black", main="Occupancy estimation for Silver Haired Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -731,7 +683,7 @@ htmlreg(extract(subset(select.La.No2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-lano.stack <- stack(bs,bc, bb, Occu.layer.LaNo2$layer.1)
+lano.stack <- stack(bs,bc, bb, Occu1.layer.LaNo2$layer.1)
 
 names(lano.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -749,20 +701,16 @@ BatOccuTaBr<-BatOccu[,38:40]
 SimOccuTaBr2<-unmarkedFrameOccu(y = BatOccuTaBr, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
 
-model.occu.Ta.Br2 <- occu(~ Julian + Meanhum + Meantemp  ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuTaBr2)
+model.Occu1.Ta.Br2 <- occu(~ Julian + Meanhum + Meantemp  ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy +  I(Burn.intensity.Canopy^2) + Burn.intensity.basal + I(Burn.intensity.basal^2), SimOccuTaBr2)
 
 
-select.Ta.Br2 <- dredge(model.occu.Ta.Br2, rank = "AICc")
-```
+select.Ta.Br2 <- dredge(model.Occu1.Ta.Br2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.Ta.Br2<-get.models(select.Ta.Br2, 1)[[1]]
-Occu.layer.TaBr2 <- predict(best.Ta.Br2, type = "state", newdata=Predictors)
-```
+best2.Ta.Br2<-get.models(select.Ta.Br2, 1)[[1]]
+Occu1.layer.TaBr2 <- predict(best2.Ta.Br2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.TaBr2<-Occu.layer.TaBr2*PNF
-plot(Occu.layer.TaBr2$layer.1, colNA="black", main="Occupancy estimation for Brazilian free-tailed bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.TaBr2<-Occu1.layer.TaBr2*PNF
+plot(Occu1.layer.TaBr2$layer.1, colNA="black", main="Occupancy estimation for Brazilian free-tailed bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -771,7 +719,7 @@ htmlreg(extract(subset(select.Ta.Br2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-tabr.stack <- stack(bs,bc, bb, Occu.layer.TaBr2$layer.1)
+tabr.stack <- stack(bs,bc, bb, Occu1.layer.TaBr2$layer.1)
 
 names(tabr.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -789,20 +737,16 @@ BatOccuLaCi<-BatOccu[,41:43]
 #N=49
 SimOccuLaCi2<-unmarkedFrameOccu(y = BatOccuLaCi, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.La.Ci2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuLaCi2)
+model.Occu1.La.Ci2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + (Burn.intensity.Canopy^2) + Burn.intensity.basal + I(Burn.intensity.basal^2), SimOccuLaCi2)
 
 
-select.La.Ci2 <- dredge(model.occu.La.Ci2, rank = "AICc")
-```
+select.La.Ci2 <- dredge(model.Occu1.La.Ci2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.La.Ci2<-get.models(select.La.Ci2, 1)[[1]]
-Occu.layer.LaCi2 <- predict(best.La.Ci2, type = "state", newdata=Predictors)
-```
+best2.La.Ci2<-get.models(select.La.Ci2, 1)[[1]]
+Occu1.layer.LaCi2 <- predict(best2.La.Ci2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.LaCi2<-Occu.layer.LaCi2*PNF
-plot(Occu.layer.LaCi2$layer.1, colNA="black", main="Occupancy estimation for Hoary Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.LaCi2<-Occu1.layer.LaCi2*PNF
+plot(Occu1.layer.LaCi2$layer.1, colNA="black", main="Occupancy estimation for Hoary Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -811,7 +755,7 @@ htmlreg(extract(subset(select.La.Ci2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-laci.stack <- stack(bs,bc, bb, Occu.layer.LaCi2$layer.1)
+laci.stack <- stack(bs,bc, bb, Occu1.layer.LaCi2$layer.1)
 
 names(laci.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -828,20 +772,16 @@ BatOccuEuMa<-BatOccu[,47:49]
 #N=49
 SimOccuEuMa2<-unmarkedFrameOccu(y = BatOccuEuMa, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.Eu.Ma2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuEuMa2)
+model.Occu1.Eu.Ma2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal +I(Burn.intensity.basal^2), SimOccuEuMa2)
 
 
-select.Eu.Ma2 <- dredge(model.occu.Eu.Ma2, rank = "AICc")
-```
+select.Eu.Ma2 <- dredge(model.Occu1.Eu.Ma2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.Eu.Ma2<-get.models(select.Eu.Ma2, 1)[[1]]
-Occu.layer.EuMa2 <- predict(best.Eu.Ma2, type = "state", newdata=Predictors)
-```
+best2.Eu.Ma2<-get.models(select.Eu.Ma2, 1)[[1]]
+Occu1.layer.EuMa2 <- predict(best2.Eu.Ma2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.EuMa2<-Occu.layer.EuMa2*PNF
-plot(Occu.layer.EuMa2$layer.1, colNA="black", main="Occupancy estimation for Spotted Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.EuMa2<-Occu1.layer.EuMa2*PNF
+plot(Occu1.layer.EuMa2$layer.1, colNA="black", main="Occupancy estimation for Spotted Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -850,7 +790,7 @@ htmlreg(extract(subset(select.Eu.Ma2, delta <= 2, recalc.weights = FALSE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-euma.stack <- stack(bs,bc, bb, Occu.layer.EuMa2$layer.1)
+euma.stack <- stack(bs,bc, bb, Occu1.layer.EuMa2$layer.1)
 
 names(euma.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -868,22 +808,18 @@ BatOccuEuPe<-BatOccu[,50:52]
 
 
 sampling.cov3<-data.frame(scale(sampling.cov2))
-SimOccuEuPe2<-unmarkedFrameOccu(y = BatOccuEuPe, siteCovs =sampling.cov3, obsCovs=Dailycov3)
+SimOccuEuPe2<-unmarkedFrameOccu(y = BatOccuEuPe, siteCovs =sampling.cov2, obsCovs=Dailycov3)
 
-model.occu.Eu.Pe2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + Burn.intensity.Canopy + Burn.intensity.basal, SimOccuEuPe2)
+model.Occu1.Eu.Pe2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Burn.intensity.basal + I(Burn.intensity.basal^2), SimOccuEuPe2)
 
 
-select.Eu.Pe2 <- dredge(model.occu.Eu.Pe2, rank = "AICc")
-```
+select.Eu.Pe2 <- dredge(model.Occu1.Eu.Pe2, rank = "AICc")
 
-```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
-best.Eu.Pe2<-get.models(select.Eu.Pe2, 1)[[1]]
-Occu.layer.EuPe2 <- predict(best.Eu.Pe2, type = "state", newdata=Predictors)
-```
+best2.Eu.Pe2<-get.models(select.Eu.Pe2, 1)[[1]]
+Occu1.layer.EuPe2 <- predict(best2.Eu.Pe2, type = "state", newdata=Predictors)
 
-```{r, echo=FALSE,warning=FALSE,message=FALSE}
-Occu.layer.EuPe2<-Occu.layer.EuPe2*PNF
-plot(Occu.layer.EuPe2$layer.1, colNA="black", main="Occupancy estimation for western mastiff bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+Occu1.layer.EuPe2<-Occu1.layer.EuPe2*PNF
+plot(Occu1.layer.EuPe2$layer.1, colNA="black", main="Occupancy estimation for western mastiff bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
 ```
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
@@ -893,7 +829,7 @@ write.csv(sampling.cov2, "yahoo.csv")
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
-eupe.stack <- stack(bs,bc, bb, Occu.layer.EuPe2$layer.1)
+eupe.stack <- stack(bs,bc, bb, Occu1.layer.EuPe2$layer.1)
 
 names(eupe.stack)<-c("Burn intensity Soil", "Burn intensity Canopy","Burn intensity Basal", "Occupancy")
 
@@ -905,7 +841,7 @@ pairs(eupe.stack)
 
 ```{r,echo=FALSE, cache=TRUE}
 #N=49a
-#AllBats<-stack(Occu.layer.MyYu$layer.1,Occu.layer.MyCa$layer.1,Occu.layer.MyCi$layer.1,Occu.layer.MyVo$layer.1,Occu.layer.MyLu$layer.1, Occu.layer.LaBl$layer.1, Occu.layer.MyEv$layer.1, Occu.layer.AnPa$layer.1, Occu.layer.MyTh$layer.1, Occu.layer.CoTo$layer.1)`
+#AllBats<-stack(Occu1.layer.MyYu$layer.1,Occu1.layer.MyCa$layer.1,Occu1.layer.MyCi$layer.1,Occu1.layer.MyVo$layer.1,Occu1.layer.MyLu$layer.1, Occu1.layer.LaBl$layer.1, Occu1.layer.MyEv$layer.1, Occu1.layer.AnPa$layer.1, Occu1.layer.MyTh$layer.1, Occu1.layer.CoTo$layer.1)`
 #names(AllBats)<-c("Yuma Myotis", "California Bat","Small Footed Myotis", "Hairy-winged bat" ,"Little Brown Bat", "Western Red Bat", "Long-eared Bat", "Pallid Bat", "Fringed Bat", "Townsend's big-eared Bat")
 #plot(AllBats, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black") 
 #pairs(AllBats, xlim=c(0,1), ylim=c(0,1))
@@ -913,15 +849,10 @@ pairs(eupe.stack)
 
 ```{r,echo=FALSE, cache=TRUE}
 #N=49a
-#AllBats<-stack(Occu.layer.MyYu2$layer.1, Occu.layer.MyCa2$layer.1, Occu.layer.MyCi2$layer.1,Occu.layer.MyVo2$layer.1,Occu.layer.MyLu2$layer.1, Occu.layer.LaBl2$layer.1, Occu.layer.MyEv2$layer.1,Occu.layer.AnPa2$layer.1, Occu.layer.MyTh2$layer.1, Occu.layer.CoTo2$layer.1, Occu.layer.EpFu2$layer.1, Occu.layer.LaNo2$layer.1, Occu.layer.TaBr2$layer.1, Occu.layer.LaCi2$layer.1, Occu.layer.EuMa2$layer.1,Occu.layer.EuPe2$layer.1)
+#AllBats<-stack(Occu1.layer.MyYu2$layer.1, Occu1.layer.MyCa2$layer.1, Occu1.layer.MyCi2$layer.1,Occu1.layer.MyVo2$layer.1,Occu1.layer.MyLu2$layer.1, Occu1.layer.LaBl2$layer.1, Occu1.layer.MyEv2$layer.1,Occu1.layer.AnPa2$layer.1, Occu1.layer.MyTh2$layer.1, Occu1.layer.CoTo2$layer.1, Occu1.layer.EpFu2$layer.1, Occu1.layer.LaNo2$layer.1, Occu1.layer.TaBr2$layer.1, Occu1.layer.LaCi2$layer.1, Occu1.layer.EuMa2$layer.1,Occu1.layer.EuPe2$layer.1)
 #names(AllBats)<-c("Yuma Myotis", "California bat","Small Footed Myotis", "Hairy-winged bat" ,"Little Brown Bat", "Western Red Bat","Long-eared Bat" ,"Pallid Bat", "Fringed Bat", "Townsend's big-eared Bat", "Big Brow Bat","Silver-Haired Bat", "Brazilian free-tailed bat", "Hoary Bat", "Spotted bat", " western mastiff bat")
 #plot(AllBats, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black") 
 #pairs(AllBats, xlim=c(0,1), ylim=c(0,1))
-```
-
-
-```{r,echo=FALSE, cache=TRUE}
-#levelplot(AllBats, col.regions = rev(terrain.colors(20)))
 ```
 
 #Fire bats
@@ -929,7 +860,7 @@ pairs(eupe.stack)
 
 ```{r,echo=FALSE, cache=TRUE}
 #N=49a
-FireBats<-stack(Occu.layer.MyYu2$layer.1, Occu.layer.MyCi2$layer.1, Occu.layer.MyLu2$layer.1, Occu.layer.LaBl2$layer.1, Occu.layer.MyEv2$layer.1,Occu.layer.AnPa2$layer.1, Occu.layer.CoTo2$layer.1, Occu.layer.EpFu2$layer.1, Occu.layer.LaNo2$layer.1, Occu.layer.TaBr2$layer.1, Occu.layer.EuPe2$layer.1)
+FireBats<-stack(Occu1.layer.MyYu2$layer.1, Occu1.layer.MyCi2$layer.1, Occu1.layer.MyLu2$layer.1, Occu1.layer.LaBl2$layer.1, Occu1.layer.MyEv2$layer.1,Occu1.layer.AnPa2$layer.1, Occu1.layer.CoTo2$layer.1, Occu1.layer.EpFu2$layer.1, Occu1.layer.LaNo2$layer.1, Occu1.layer.TaBr2$layer.1, Occu1.layer.EuPe2$layer.1)
 names(FireBats)<-c("Yuma Myotis","Small Footed Myotis","Little Brown Bat", "Western Red Bat","Long-eared Bat" ,"Pallid Bat", "Townsend's big-eared Bat", "Big Brow Bat","Silver-Haired Bat", "Brazilian free-tailed bat", " western mastiff bat")
 plot(FireBats, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black") 
 pairs(FireBats, xlim=c(0,1), ylim=c(0,1))
@@ -1375,19 +1306,24 @@ plotMLEdist <- function(mydist, p, psi)
 ```
 
 ```{r, echo=FALSE, cache=TRUE}
-best.My.Vo2
-confint(best.My.Vo2, type='det', method = 'normal')
-confint(best.My.Vo2, type='det', method = 'profile')
-lc <- linearComb(best.My.Vo2['det'],c(1,0.5))
+best2.My.Vo2
+confint(best2.My.Vo2, type='det', method = 'normal')
+confint(best2.My.Vo2, type='det', method = 'profile')
+lc <- linearComb(best2.My.Vo2['det'],c(1,0.5))
 btlc <- backTransform(lc)
 btlc
 summary(btlc)
 
 confint(btlc, level = 0.9)
-re <- ranef(best.My.Vo2)
+re <- ranef(best2.My.Vo2)
 sum(bup(re, stat="mode"))
 
 
 myres<-evaldesign(psi=0.377,p=0.3,s=49,k=3,nits=10000,doprint=1,doplot=1) 
 myres
+```
+
+```{r}
+Predictors
+summary(sampling.cov2)
 ```

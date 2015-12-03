@@ -25,3 +25,5 @@ foreign
 texreg
 sm
 vioplot
+nlme
+mgcv

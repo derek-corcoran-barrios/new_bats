@@ -2,7 +2,7 @@
 title: "Fire_summary"
 author: "Derek Corcoran"
 date: "November 9, 2015"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}

@@ -1,0 +1,61 @@
+---
+title: "DistancetoFireBorder"
+author: "Derek Corcoran"
+date: "January 5, 2016"
+output: html_document
+---
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE,results='hide'}
+#first load libraries
+library(raster)
+library(rasterVis)
+library(maps)
+library(maptools)
+library(rgdal)
+library(latticeExtra)
+library(dplyr)
+library(knitr)
+library(unmarked)
+library(lubridate)
+library(jpeg)
+library(stargazer)
+library(xtable)
+library(MuMIn)
+library(ggplot2)
+library(RCurl)
+library(foreign)
+library(caret)
+PNF<- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/PNF.asc")
+PNF<-raster (PNF)
+```
+
+
+```{r, echo=FALSE, cache=TRUE}
+fire <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/fire.asc")
+fire<-raster (fire)
+
+not.fire <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/not_fire.asc")
+not.fire<-raster (not.fire)
+
+fire<- reclassify(fire, cbind(0, NA))
+polfire <- rasterToContour(fire)
+polifire<-rasterize(polfire, fire)
+plot(fire)
+plot(not.fire)
+plot(polifire, colNA="black")
+```
+
+```{r, echo=FALSE, cache=TRUE}
+
+dist.to.fire.edge<- distance(polifire)
+dist.to.fire.edge<- dist.to.fire.edge*PNF
+plot(dist.to.fire.edge, colNA = "black")
+```
+
+```{r}
+dist.to.fire.edge
+summary(dist.to.fire.edge)
+histogram(dist.to.fire.edge)
+writeRaster(dist.to.fire.edge, "fire_edge.asc", format="ascii",overwrite=TRUE)
+```

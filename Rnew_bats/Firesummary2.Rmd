@@ -2,7 +2,7 @@
 title: "Fire_summary"
 author: "Derek Corcoran"
 date: "November 9, 2015"
-output: pdf_document
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -902,7 +902,6 @@ not.fire <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/not_fire.asc")
 not.fire<-raster (not.fire)
 
 fire<- reclassify(fire, cbind(0, NA))
-
 plot(fire)
 plot(not.fire)
 
@@ -1095,4 +1094,37 @@ map.scale(-120.7, 39.5, relwidth = 0.15, metric = TRUE, ratio = FALSE,cex=0.7)
 #More info on how to do this clasification in *https://geoscripting-wur.github.io/AdvancedRasterAnalysis/*
 ```
 
+```{r}
+best2.My.Yu2
 
+summary(best2.My.Yu2)
+
+names(best2.My.Yu2)
+
+getP(best2.My.Yu2)
+
+best2.My.Yu2['state']
+
+coef(best2.My.Yu2, type='state')
+
+# Variance-covariance matrix
+vcov(best2.My.Yu2, type='state')
+
+# Confidence intervals using profiled likelihood
+confint(best2.My.Yu2, type='state', method='profile')
+
+# Expected values
+fitted(best2.My.Yu2)
+
+logLik(best2.My.Yu2)
+
+
+
+# Predicted abundance at specified covariate values
+
+
+# Assess goodness-of-fit
+parboot(best2.My.Yu2)
+plot(best2.My.Yu2)
+
+```

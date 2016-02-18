@@ -55,6 +55,8 @@ Vegetation_existing <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/Vegetat
 Vegetation_existing<-raster (Vegetation_existing)
 FireReturnAll <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/FireReturnAll.asc")
 FireReturnAll<-raster (FireReturnAll)
+Fire_edge <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/fire_edge.asc")
+Fire_edge<-raster (Fire_edge)
 ```
 
 
@@ -103,8 +105,9 @@ names(Dailycov3) <- c("Julian", "Maxhum","Maxtemp","Meanhum", "Meantemp","Minhum
 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
 
-Predictors <-stack(riverdist.r, roaddist.r, Vegetation_existing,  FireReturnAll, topo, bs,bc, bb)
-names(Predictors)<-c("Distance to water", "Distance to road","Existing vegetation","Fire Interval","Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal")
+Predictors <-stack(riverdist.r, roaddist.r, Vegetation_existing,  FireReturnAll, topo, bs,bc, bb, Fire_edge)
+names(Predictors)<-c("Distance to water", "Distance to road","Existing vegetation","Fire Interval","Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Fire_edge")
+plot(Predictors)
 Pred.DF<-as.data.frame(Predictors)
 Pred.DF<-predict(preprocov, new=Pred.DF)
 
@@ -237,7 +240,7 @@ plot(Occu1.layer.MyYu2$layer.1, colNA="black", main="Occupancy estimation for Yu
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.My.Yu2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.My.Yu2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -280,7 +283,7 @@ plot(Occu1.layer.MyCa2$layer.1, colNA="black", main="Occupancy estimation for Ca
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.My.Ca2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.My.Ca2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -321,7 +324,7 @@ plot(Occu1.layer.MyCi2$layer.1, colNA="black", main="Occupancy estimation for We
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.My.Ci2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.My.Ci2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -362,7 +365,7 @@ plot(Occu1.layer.MyVo2$layer.1, colNA="black", main="Occupancy estimation for Ha
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.My.Vo2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.My.Vo2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -398,7 +401,7 @@ plot(Occu1.layer.MyLu2$layer.1, colNA="black", main="Occupancy estimation for Li
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.My.Lu2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.My.Lu2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -436,7 +439,7 @@ plot(Occu1.layer.LaBl2$layer.1, colNA="black", main="Occupancy estimation for We
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.La.Bl2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.La.Bl2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -476,7 +479,7 @@ plot(Occu1.layer.MyEv2$layer.1, colNA="black", main="Occupancy estimation for Lo
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.My.Ev2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.My.Ev2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -514,7 +517,7 @@ plot(Occu1.layer.AnPa2$layer.1, colNA="black", main="Occupancy estimation for Pa
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.An.Pa2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.An.Pa2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -552,7 +555,7 @@ plot(Occu1.layer.MyTh2$layer.1, colNA="black", main="Occupancy estimation for Fr
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.My.Th2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.My.Th2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -588,7 +591,7 @@ plot(Occu1.layer.CoTo2$layer.1, colNA="black", main="Occupancy estimation for To
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.Co.To2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.Co.To2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -629,7 +632,7 @@ SimOccuPaHe2<-unmarkedFrameOccu(y = BatOccuPaHe, siteCovs =sampling.cov2, obsCov
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 #library(texreg)
-#htmlreg(extract(subset(select.Pa.He2, delta <= 2, recalc.weights = FALSE)))
+#htmlreg(extract(subset(select.Pa.He2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -665,7 +668,7 @@ plot(Occu1.layer.EpFu2$layer.1, colNA="black", main="Occupancy estimation for Bi
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.Ep.Fu2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.Ep.Fu2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -701,7 +704,7 @@ plot(Occu1.layer.LaNo2$layer.1, colNA="black", main="Occupancy estimation for Si
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.La.No2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.La.No2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -737,7 +740,7 @@ plot(Occu1.layer.TaBr2$layer.1, colNA="black", main="Occupancy estimation for Br
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.Ta.Br2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.Ta.Br2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -773,7 +776,7 @@ plot(Occu1.layer.LaCi2$layer.1, colNA="black", main="Occupancy estimation for Ho
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.La.Ci2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.La.Ci2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -808,7 +811,7 @@ plot(Occu1.layer.EuMa2$layer.1, colNA="black", main="Occupancy estimation for Sp
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.Eu.Ma2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.Eu.Ma2, delta <= 2, recalc.weights = TRUE)))
 ```
 
 ```{r,echo=FALSE,cache=TRUE}
@@ -846,7 +849,7 @@ plot(Occu1.layer.EuPe2$layer.1, colNA="black", main="Occupancy estimation for we
 
 ```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
 library(texreg)
-htmlreg(extract(subset(select.Eu.Pe2, delta <= 2, recalc.weights = FALSE)))
+htmlreg(extract(subset(select.Eu.Pe2, delta <= 2, recalc.weights = TRUE)))
 write.csv(sampling.cov2, "yahoo.csv")
 ```
 

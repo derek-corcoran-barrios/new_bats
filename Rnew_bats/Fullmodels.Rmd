@@ -1,0 +1,810 @@
+---
+title: "Full models"
+author: "Derek Corcoran"
+date: "February 16, 2016"
+output: html_document
+---
+
+#Abstract
+
+This webpage will show the results of a bat survey study done in the Plumas National Forest in North California. The objective of this study is to determine the distribution of the different species of bats within the park. In order to do that we have performed occupancy models for the species present in the park. The results of this models will be shown as maps showing the probability of occurence of bats in each point, that is, if you see a value of 1, there is a 100% chance of finding a bat in that point, if there is a value of 0 there is 0% chance of finding that specie in that point, if there is a value of 0.5 there is a 50% chance of finding that specie in that point.
+
+Another result
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE,results='hide'}
+#first load libraries
+library(raster)
+library(rasterVis)
+library(maps)
+library(maptools)
+library(rgdal)
+library(latticeExtra)
+library(dplyr)
+library(knitr)
+library(unmarked)
+library(lubridate)
+library(jpeg)
+library(stargazer)
+library(xtable)
+library(MuMIn)
+library(ggplot2)
+library(RCurl)
+library(foreign)
+library(caret)
+```
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, results='hide', cache=TRUE}
+#read rasters
+PNF<- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/PNF.asc")
+PNF<-raster (PNF)
+bc <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/bc.asc")
+bc<-raster (bc)
+bb <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/bb.asc")
+bb<-raster (bb)
+bs <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/bs.asc")
+bs<-raster (bs)
+topo <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/topo.asc")
+topo<-raster (topo)
+topo<-topo*PNF
+Vegetation_existing <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/Vegetation_existing.asc")
+Vegetation_existing<-raster (Vegetation_existing)
+FireReturnAll <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/FireReturnAll.asc")
+FireReturnAll<-raster (FireReturnAll)
+Fire_edge <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/fire_edge.asc")
+Fire_edge<-raster (Fire_edge)
+```
+
+
+```{r, echo=FALSE, results='hide', warning=FALSE, cache=TRUE}
+roaddist.r<- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/roaddist.asc")
+roaddist.r<-raster (roaddist.r)
+roaddist.r<- roaddist.r*PNF
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,results='hide', cache=TRUE}
+riverdist.r<- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/riverdist.asc")
+riverdist.r<-raster (riverdist.r)
+riverdist.r<- riverdist.r*PNF
+riverdist.r<- riverdist.r*PNF
+
+```
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+sampling.cov2 <- read.csv("~/new_bats/Rnew_bats/Bats_data_products/sampling.cov2.csv")
+sampling.cov2<- sampling.cov2[,-1]
+sampling.cov2<- data.frame(sampling.cov2)
+preprocov <-preProcess(sampling.cov2[,1:9], method = c("center","scale"))
+sampling.cov2<-predict(preprocov, sampling.cov2[,1:9])
+
+Dailycov3 <- read.csv("~/new_bats/Rnew_bats/Bats_data_products/Dailycov3.csv")
+Dailycov3 <- Dailycov3 [,-1]
+
+
+preproDaily <-preProcess(Dailycov3[,], method = c("knnImpute"))
+Dailycov3<-predict(preproDaily, Dailycov3)
+
+Julian<-Dailycov3[,1:3]
+Max.hum<-Dailycov3[,4:6]
+Max.temp<-Dailycov3[,7:9]
+Mean.hum<-Dailycov3[,10:12]
+Mean.temp<-Dailycov3[,13:15]
+Min.hum<-Dailycov3[,16:18]
+Min.temp<-Dailycov3[,19:21]
+Sd.hum<-Dailycov3[,22:24]
+Sd.temp<-Dailycov3[,25:27]
+
+Dailycov3<- list(Julian,Max.hum, Max.temp, Mean.hum,Mean.temp, Min.hum, Min.temp, Sd.hum, Sd.temp)
+names(Dailycov3) <- c("Julian", "Maxhum","Maxtemp","Meanhum", "Meantemp","Minhum","Mintemp","sdhum","sdtemp")
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+
+Predictors <-stack(riverdist.r, roaddist.r, Vegetation_existing,  FireReturnAll, topo, bs,bc, bb, Fire_edge)
+names(Predictors)<-c("Distance to water", "Distance to road","Existing vegetation","Fire Interval","Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Fire_edge")
+plot(Predictors)
+Pred.DF<-as.data.frame(Predictors)
+Pred.DF<-predict(preprocov, new=Pred.DF)
+
+Distance.to.water <- PNF  # this will be the template
+Distance.to.water[] <- NA 
+values(Distance.to.water)<-Pred.DF[,1]
+
+Distance.to.road <- PNF  # this will be the template
+Distance.to.road[] <- NA 
+values(Distance.to.road)<-Pred.DF[,2]
+
+Existing.vegetation <- PNF  # this will be the template
+Existing.vegetation[] <- NA 
+values(Existing.vegetation)<-Pred.DF[,3]
+
+Fire.Interval <- PNF  # this will be the template
+Fire.Interval[] <- NA 
+values(Fire.Interval)<-Pred.DF[,4]
+
+Altitude <- PNF  # this will be the template
+Altitude[] <- NA 
+values(Altitude)<-Pred.DF[,5]
+     
+Burn.intensity.soil <- PNF  # this will be the template
+Burn.intensity.soil[] <- NA 
+values(Burn.intensity.soil)<-Pred.DF[,6]
+
+Burn.intensity.Canopy <- PNF  # this will be the template
+Burn.intensity.Canopy[] <- NA 
+values(Burn.intensity.Canopy)<-Pred.DF[,7]
+
+Burn.intensity.basal <- PNF  # this will be the template
+Burn.intensity.basal[] <- NA 
+values(Burn.intensity.basal)<-Pred.DF[,8]
+
+Fire_edge <- PNF  # this will be the template
+Fire_edge[] <- NA 
+values(Fire_edge)<-Pred.DF[,9]
+
+Predictors <-stack(Distance.to.water, Distance.to.road, Existing.vegetation,  Fire.Interval, Altitude, Burn.intensity.soil,Burn.intensity.Canopy, Burn.intensity.basal, Fire_edge)
+names(Predictors)<-c("Distance to water", "Distance to road","Existing vegetation","Fire Interval","Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Fire_edge")
+
+```
+
+```{r, echo=FALSE}
+#then add the data
+RESULTS <- read.csv("~/new_bats/Rnew_bats/Bats_data_products/RESULTS.csv")
+RESULTS <- RESULTS[,-1]
+RESULTS$START.DATE<- dmy(as.character(RESULTS$START.DATE), tz = "America/Los_Angeles")
+RESULTS$END.DATE<- dmy(as.character(RESULTS$END.DATE), tz = "America/Los_Angeles")
+```
+
+
+
+
+#Results collected in the field 
+
+
+```{r, echo=FALSE}
+plot(Predictors)
+```
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+Result2<-read.csv("~/new_bats/Rnew_bats/Bats_data_products/RESULTS2.csv")
+Result2<- Result2[,-1]
+```
+
+
+
+
+#Maps showing the sampled Points
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+plot(PNF, legend=FALSE)
+points(RESULTS$LONG, RESULTS$LAT, cex=0.5)
+map.scale(-120.7, 39.5, relwidth = 0.15, metric = TRUE, ratio = FALSE,cex=0.7)
+```
+
+#Results of species prescence
+
+In this area 0 means absence, and 1 means prescence. This table has for each site (ID), every specie and day, so for example if Mylu1=0, that means that for *Myotis lucifugus* (common name Little Brown bat, was detected on day one for that particular site).
+
+##Here is a key for bat species
+
+- *Myotis yumanensis* (Myyu)
+- *Myotis californicus* (Myca)
+- *Myotis ciliolabrum* (Myci)
+- *Myotis volans* (Myvo)
+- *Myotis lucifugus* (Mylu)
+- *Parastrellus hesperus* (Pahe)
+- *Lasiurus blossevillii* (Labo)
+- *Myotis evotis* (Myev)
+- *Antrozous pallidus*  **(Anpa)**
+- *Eptesicus fuscus* (Epfu)
+- *Lasionycteris noctivagans* (Lano)
+- *Myotis thysanodes* **(Myth)**
+- *Tadarida brasiliensis* (Tabr)
+- *Lasiurus cinereus* (Laci)
+- *Corynorhinus townsendii* **(Coto)**
+- *Euderma maculatum* (Euma)
+- *Eumops perotis* (Eupe)
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+BatOccu <- read.csv("~/new_bats/Rnew_bats/BatOccu.csv")
+#print(BatOccu)
+```
+
+#Maps predicting the distribution of bats
+
+##Yuma myotis (*Myotis yumanensis*)
+
+```{r, echo=FALSE,message=FALSE}
+library(unmarked)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49a
+BatOccuMyYu<-BatOccu[,2:4]
+
+SimOccuMyYu2<-unmarkedFrameOccu(y = BatOccuMyYu, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.My.Yu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2),SimOccuMyYu2)
+
+select.My.Yu2 <- dredge(model.Occu1.My.Yu2, rank = "AICc")
+
+best2.My.Yu2<-get.models(select.My.Yu2, 1)[[1]]
+Occu1.layer.MyYu2 <- predict(best2.My.Yu2, type = "state", newdata=Predictors)
+
+brks= c(0, 0.1, 0.2, 0.3, 0.4,0.5, 0.6,0.7, 0.8,0.9, 1)
+cols <- rev(terrain.colors(10))
+Occu1.layer.MyYu2<-Occu1.layer.MyYu2*PNF
+plot(Occu1.layer.MyYu2$layer.1, colNA="black", main="Occupancy estimation for Yuma Myotis",breaks=brks, lab.breaks=brks, col=cols, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.My.Yu2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##California bat (*Myotis californicus*)
+
+
+```{r, echo=FALSE,message=FALSE}
+library(unmarked)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuMyCa<-BatOccu[,5:7]
+```
+
+###Total model
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+
+SimOccuMyCa2<-unmarkedFrameOccu(y = BatOccuMyCa, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.My.Ca2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuMyCa2)
+
+select.My.Ca2 <- dredge(model.Occu1.My.Ca2, rank = "AICc")
+
+best2.My.Ca2<-get.models(select.My.Ca2, 1)[[1]]
+Occu1.layer.MyCa2 <- predict(best2.My.Ca2, type = "state", newdata=Predictors)
+
+Occu1.layer.MyCa2<-Occu1.layer.MyCa2*PNF
+plot(Occu1.layer.MyCa2$layer.1, colNA="black", main="Occupancy estimation for California Bat",breaks=brks, col=cols,lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.My.Ca2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##Western Small Footed Myotis (*Myotis ciliolabrum*)
+
+```{r, echo=FALSE,message=FALSE, results='asis'}
+library(unmarked)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuMyCi<-BatOccu[,8:10]
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuMyCi2<-unmarkedFrameOccu(y = BatOccuMyCi, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.My.Ci2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuMyCi2)
+
+
+select.My.Ci2 <- dredge(model.Occu1.My.Ci2, rank = "AICc")
+
+best2.My.Ci2<-get.models(select.My.Ci2, 1)[[1]]
+Occu1.layer.MyCi2 <- predict(best2.My.Ci2, type = "state", newdata=Predictors)
+
+Occu1.layer.MyCi2<-Occu1.layer.MyCi2*PNF
+plot(Occu1.layer.MyCi2$layer.1, colNA="black", main="Occupancy estimation for Western Small Footed Myotis",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.My.Ci2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##Hairy-winged bat (*Myotis volans*)
+
+```{r, echo=FALSE,message=FALSE}
+library(unmarked)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+
+BatOccuMyVo<-BatOccu[,11:13]
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuMyVo2<-unmarkedFrameOccu(y = BatOccuMyVo, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.My.Vo2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2),SimOccuMyVo2)
+
+select.My.Vo2 <- dredge(model.Occu1.My.Vo2, rank = "AICc")
+best2.My.Vo2<-get.models(select.My.Vo2, 1)[[1]]
+Occu1.layer.MyVo2 <- predict(best2.My.Vo2, type = "state", newdata=Predictors)
+
+Occu1.layer.MyVo2<-Occu1.layer.MyVo2*PNF
+plot(Occu1.layer.MyVo2$layer.1, colNA="black", main="Occupancy estimation for Hairy-winged bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.My.Vo2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##Little Brown bat (*Myotis lucifugus*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuMyLu<-BatOccu[,14:16]
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+SimOccuMyLu2<-unmarkedFrameOccu(y = BatOccuMyLu, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.My.Lu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuMyLu2)
+
+
+select.My.Lu2 <- dredge(model.Occu1.My.Lu2, rank = "AICc")
+
+best2.My.Lu2<-get.models(select.My.Lu2, 1)[[1]]
+Occu1.layer.MyLu2 <- predict(best2.My.Lu2, type = "state", newdata=Predictors)
+
+Occu1.layer.MyLu2<-Occu1.layer.MyLu2*PNF
+plot(Occu1.layer.MyLu2$layer.1, colNA="black", main="Occupancy estimation for Little Brown Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.My.Lu2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##Western Red Bat (*Lasiurus blossevillii*)
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuLaBl<-BatOccu[,20:22]
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+
+SimOccuLaBl2<-unmarkedFrameOccu(y = BatOccuLaBl, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.La.Bl2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2) ,SimOccuLaBl2)
+
+select.La.Bl2 <- dredge(model.Occu1.La.Bl2, rank = "AICc")
+
+best2.La.Bl2<-get.models(select.La.Bl2, 1)[[1]]
+Occu1.layer.LaBl2 <- predict(best2.La.Bl2, type = "state", newdata=Predictors)
+
+Occu1.layer.LaBl2<-Occu1.layer.LaBl2*PNF
+plot(Occu1.layer.LaBl2$layer.1, colNA="black", main="Occupancy estimation for Western Red Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.La.Bl2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+## Long-eared Bat (*Myotis evotis*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+
+#N=49
+
+BatOccuMyEv<-BatOccu[,23:25]
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+
+SimOccuMyEv2<-unmarkedFrameOccu(y = BatOccuMyEv, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.My.Ev2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuMyEv2)
+
+select.My.Ev2 <- dredge(model.Occu1.My.Ev2, rank = "AICc")
+
+best2.My.Ev2<-get.models(select.My.Ev2, 1)[[1]]
+Occu1.layer.MyEv2 <- predict(best2.My.Ev2, type = "state", newdata=Predictors)
+
+Occu1.layer.MyEv2<-Occu1.layer.MyEv2*PNF
+plot(Occu1.layer.MyEv2$layer.1, colNA="black", main="Occupancy estimation for Long Eared Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.My.Ev2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+## Pallid Bat (*Antrozous pallidus*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuAnPa<-BatOccu[,26:28]
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+
+SimOccuAnPa2<-unmarkedFrameOccu(y = BatOccuAnPa, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.An.Pa2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuAnPa2)
+
+select.An.Pa2 <- dredge(model.Occu1.An.Pa2, rank = "AICc")
+
+best2.An.Pa2<-get.models(select.An.Pa2, 1)[[1]]
+Occu1.layer.AnPa2 <- predict(best2.An.Pa2, type = "state", newdata=Predictors)
+
+Occu1.layer.AnPa2<-Occu1.layer.AnPa2*PNF
+plot(Occu1.layer.AnPa2$layer.1, colNA="black", main="Occupancy estimation for Pallid Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.An.Pa2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+###Fringed Bat (*Myotis thysanoides*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuMyTh<-BatOccu[,35:37]
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuMyTh2<-unmarkedFrameOccu(y = BatOccuMyTh, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.My.Th2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2) ,SimOccuMyTh2)
+
+
+select.My.Th2 <- dredge(model.Occu1.My.Th2, rank = "AICc")
+
+best2.My.Th2<-get.models(select.My.Th2, 1)[[1]]
+Occu1.layer.MyTh2 <- predict(best2.My.Th2, type = "state", newdata=Predictors)
+
+Occu1.layer.MyTh2<-Occu1.layer.MyTh2*PNF
+plot(Occu1.layer.MyTh2$layer.1, colNA="black", main="Occupancy estimation for Fringed Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.My.Th2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##Townsend’s Long-eared Bat (*Corynorhinus townsendii*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuCoTo<-BatOccu[,44:46]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuCoTo2<-unmarkedFrameOccu(y = BatOccuCoTo, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.Co.To2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuCoTo2)
+
+
+select.Co.To2 <- dredge(model.Occu1.Co.To2, rank = "AICc")
+
+best2.Co.To2<-get.models(select.Co.To2, 1)[[1]]
+Occu1.layer.CoTo2 <- predict(best2.Co.To2, type = "state", newdata=Predictors)
+
+Occu1.layer.CoTo2<-Occu1.layer.CoTo2*PNF
+plot(Occu1.layer.CoTo2$layer.1, colNA="black", main="Occupancy estimation for Townsend big eared bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.Co.To2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##The western pipistrelle (*Parastrellus hesperus*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuPaHe<-BatOccu[,17:19]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuPaHe2<-unmarkedFrameOccu(y = BatOccuPaHe, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+
+#model.Occu1.Pa.He2 <- occu(~ Julian + Meanhum + Meantemp  ~ Burn.intensity.soil + I(Burn.intensity.soil^2) + Burn.intensity.Canopy + Burn.intensity.Canopy2 + Burn.intensity.basal +Burn.intensity.basal2, SimOccuPaHe2)
+
+
+#select.Pa.He2 <- dredge(model.Occu1.Pa.He2, rank = "AICc")
+```
+
+```{r, echo=FALSE, cache= TRUE, results='hide', message=FALSE,warning=FALSE}
+#best2.Pa.He2<-get.models(select.Pa.He2, 1)[[1]]
+#Occu1.layer.PaHe2 <- predict(best2.Pa.He2, type = "state", newdata=Predictors)
+```
+
+```{r, echo=FALSE,warning=FALSE,message=FALSE}
+#Occu1.layer.PaHe2<-Occu1.layer.PaHe2*PNF
+#plot(Occu1.layer.PaHe2$layer.1, colNA="black", main="Occupancy estimation for Pipistrel",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+#library(texreg)
+#htmlreg(extract(subset(select.Pa.He2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##big brown bat (*Eptesicus fuscus*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuEpFu<-BatOccu[,29:31]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuEpFu2<-unmarkedFrameOccu(y = BatOccuEpFu, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.Ep.Fu2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuEpFu2)
+
+
+select.Ep.Fu2 <- dredge(model.Occu1.Ep.Fu2, rank = "AICc")
+
+best2.Ep.Fu2<-get.models(select.Ep.Fu2, 1)[[1]]
+Occu1.layer.EpFu2 <- predict(best2.Ep.Fu2, type = "state", newdata=Predictors)
+
+Occu1.layer.EpFu2<-Occu1.layer.EpFu2*PNF
+plot(Occu1.layer.EpFu2$layer.1, colNA="black", main="Occupancy estimation for Big Brown Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.Ep.Fu2, delta <= 2, recalc.weights = TRUE)))
+```
+
+##silver-haired bat (*Lasionycteris noctivagans*)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE, results='hide'}
+#N=49
+BatOccuLaNo<-BatOccu[,32:34]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuLaNo2<-unmarkedFrameOccu(y = BatOccuLaNo, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.La.No2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuLaNo2)
+
+
+select.La.No2 <- dredge(model.Occu1.La.No2, rank = "AICc")
+
+best2.La.No2<-get.models(select.La.No2, 1)[[1]]
+Occu1.layer.LaNo2 <- predict(best2.La.No2, type = "state", newdata=Predictors)
+
+Occu1.layer.LaNo2<-Occu1.layer.LaNo2*PNF
+plot(Occu1.layer.LaNo2$layer.1, colNA="black", main="Occupancy estimation for Silver Haired Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.La.No2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##Brazilian free-tailed bat (*Tadarida brasiliensis*)
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+BatOccuTaBr<-BatOccu[,38:40]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuTaBr2<-unmarkedFrameOccu(y = BatOccuTaBr, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+
+model.Occu1.Ta.Br2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuTaBr2)
+
+
+select.Ta.Br2 <- dredge(model.Occu1.Ta.Br2, rank = "AICc")
+
+best2.Ta.Br2<-get.models(select.Ta.Br2, 1)[[1]]
+Occu1.layer.TaBr2 <- predict(best2.Ta.Br2, type = "state", newdata=Predictors)
+
+Occu1.layer.TaBr2<-Occu1.layer.TaBr2*PNF
+plot(Occu1.layer.TaBr2$layer.1, colNA="black", main="Occupancy estimation for Brazilian free-tailed bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.Ta.Br2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##hoary bat (*Lasiurus cinereus*)
+
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+BatOccuLaCi<-BatOccu[,41:43]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuLaCi2<-unmarkedFrameOccu(y = BatOccuLaCi, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.La.Ci2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuLaCi2)
+
+select.La.Ci2 <- dredge(model.Occu1.La.Ci2, rank = "AICc")
+
+best2.La.Ci2<-get.models(select.La.Ci2, 1)[[1]]
+Occu1.layer.LaCi2 <- predict(best2.La.Ci2, type = "state", newdata=Predictors)
+
+Occu1.layer.LaCi2<-Occu1.layer.LaCi2*PNF
+plot(Occu1.layer.LaCi2$layer.1, colNA="black", main="Occupancy estimation for Hoary Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.La.Ci2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+##Spotted bat (*Euderma maculatum*)
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+BatOccuEuMa<-BatOccu[,47:49]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+SimOccuEuMa2<-unmarkedFrameOccu(y = BatOccuEuMa, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.Eu.Ma2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuEuMa2)
+
+
+select.Eu.Ma2 <- dredge(model.Occu1.Eu.Ma2, rank = "AICc")
+
+best2.Eu.Ma2<-get.models(select.Eu.Ma2, 1)[[1]]
+Occu1.layer.EuMa2 <- predict(best2.Eu.Ma2, type = "state", newdata=Predictors)
+
+Occu1.layer.EuMa2<-Occu1.layer.EuMa2*PNF
+plot(Occu1.layer.EuMa2$layer.1, colNA="black", main="Occupancy estimation for Spotted Bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.Eu.Ma2, delta <= 2, recalc.weights = TRUE)))
+```
+
+
+## western mastiff bat (*Eumops perotis*)
+
+```{r,echo=FALSE, warning=FALSE,message=FALSE}
+BatOccuEuPe<-BatOccu[,50:52]
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+#N=49
+
+
+sampling.cov3<-data.frame(scale(sampling.cov2))
+SimOccuEuPe2<-unmarkedFrameOccu(y = BatOccuEuPe, siteCovs =sampling.cov2, obsCovs=Dailycov3)
+
+model.Occu1.Eu.Pe2 <- occu(~ Julian + Meanhum + Meantemp + sdhum + sdtemp ~   Distance.to.water + I(Distance.to.water^2) + Distance.to.road + I(Distance.to.road^2) + Existing.vegetation + I(Existing.vegetation^2) + Altitude + I(Altitude^2) + Burn.intensity.Canopy + I(Burn.intensity.Canopy^2) + Fire_edge + I(Fire_edge^2), SimOccuEuPe2)
+
+
+select.Eu.Pe2 <- dredge(model.Occu1.Eu.Pe2, rank = "AICc")
+
+best2.Eu.Pe2<-get.models(select.Eu.Pe2, 1)[[1]]
+Occu1.layer.EuPe2 <- predict(best2.Eu.Pe2, type = "state", newdata=Predictors)
+
+Occu1.layer.EuPe2<-Occu1.layer.EuPe2*PNF
+plot(Occu1.layer.EuPe2$layer.1, colNA="black", main="Occupancy estimation for western mastiff bat",breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1))
+```
+
+```{r,echo=FALSE,results='asis', warning=FALSE,message=FALSE}
+library(texreg)
+htmlreg(extract(subset(select.Eu.Pe2, delta <= 2, recalc.weights = TRUE)))
+write.csv(sampling.cov2, "yahoo.csv")
+```
+
+
+#Relationships between different species of Bats
+
+
+```{r,echo=FALSE, cache=TRUE}
+#N=49a
+#AllBats<-stack(Occu1.layer.MyYu$layer.1,Occu1.layer.MyCa$layer.1,Occu1.layer.MyCi$layer.1,Occu1.layer.MyVo$layer.1,Occu1.layer.MyLu$layer.1, Occu1.layer.LaBl$layer.1, Occu1.layer.MyEv$layer.1, Occu1.layer.AnPa$layer.1, Occu1.layer.MyTh$layer.1, Occu1.layer.CoTo$layer.1)`
+#names(AllBats)<-c("Yuma Myotis", "California Bat","Small Footed Myotis", "Hairy-winged bat" ,"Little Brown Bat", "Western Red Bat", "Long-eared Bat", "Pallid Bat", "Fringed Bat", "Townsend's big-eared Bat")
+#plot(AllBats, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black") 
+#pairs(AllBats, xlim=c(0,1), ylim=c(0,1))
+```
+
+```{r,echo=FALSE, cache=TRUE}
+#N=49a
+AllBats<-stack(Occu1.layer.MyYu2$layer.1, Occu1.layer.MyCa2$layer.1, Occu1.layer.MyCi2$layer.1,Occu1.layer.MyVo2$layer.1,Occu1.layer.MyLu2$layer.1, Occu1.layer.LaBl2$layer.1, Occu1.layer.MyEv2$layer.1,Occu1.layer.AnPa2$layer.1, Occu1.layer.MyTh2$layer.1, Occu1.layer.CoTo2$layer.1, Occu1.layer.EpFu2$layer.1, Occu1.layer.LaNo2$layer.1, Occu1.layer.TaBr2$layer.1, Occu1.layer.LaCi2$layer.1, Occu1.layer.EuMa2$layer.1,Occu1.layer.EuPe2$layer.1)
+names(AllBats)<-c("Yuma Myotis", "California bat","Small Footed Myotis", "Hairy-winged bat" ,"Little Brown Bat", "Western Red Bat","Long-eared Bat" ,"Pallid Bat", "Fringed Bat", "Townsend's big-eared Bat", "Big Brow Bat","Silver-Haired Bat", "Brazilian free-tailed bat", "Hoary Bat", "Spotted bat", " western mastiff bat")
+plot(AllBats, breaks=brks, col=cols, lab.breaks=brks, zlim=c(0,1), colNA="black") 
+
+levelplot(AllBats, colorkey = list(space = "bottom"))
+
+levelplot(AllBats, colorkey = list(space = "bottom"), col.regions = rev(rainbow(5, start=0, end=1)))
+
+levelplot(AllBats, colorkey = list(space = "bottom"), col.regions = rainbow(100))
+
+levelplot(AllBats, colorkey = list(space = "bottom"), col.regions = rev(terrain.colors(100)))
+
+levelplot(AllBats, colorkey = list(space = "bottom"), col.regions = rev(topo.colors(100)))
+
+levelplot(AllBats, colorkey = list(space = "bottom"), col.regions = heat.colors(100))
+
+levelplot(AllBats, colorkey = list(space = "bottom"), col.regions = cm.colors(100))
+
+```
+
+```{r, results='asis'}
+desition <- stack(Occu1.layer.AnPa2$layer.1, Occu1.layer.MyTh2$layer.1, Occu1.layer.CoTo2$layer.1)
+names(desition) <- c("Pallid Bat", "Fringed Bat", "Townsend's big-eared Bat")
+plot(desition)
+nths <- quantile(desition, 0.65)
+desition <- unstack(desition)
+rc<-list()
+for (i in 1:length(nths)){
+m <- c(-Inf, nths[i], NA,  nths[i], Inf, 1)
+rclmat <- matrix(m, ncol=3, byrow=TRUE)
+    rc[[i]]<-reclassify(desition[[i]] , rcl = rclmat)
+  }
+rc<- stack(unlist(rc))
+priority.area <- prod(rc)
+plot(priority.area, colNA="black", legend = FALSE)
+KML(priority.area, file='priority_area.kml', overwrite = TRUE)
+Fire_edge <- readGDAL("~/new_bats/Rnew_bats/Bats_data_products/fire_edge.asc")
+Fire_edge <- raster(Fire_edge)
+Predictors <-stack(riverdist.r, roaddist.r, Vegetation_existing,  FireReturnAll, topo, bs,bc, bb, Fire_edge)
+names(Predictors)<-c("Distance to water", "Distance to road","Existing vegetation","Fire Interval","Altitude", "Burn intensity soil","Burn intensity Canopy", "Burn intensity basal", "Fire_edge")
+
+Predictors2<- Predictors*priority.area
+
+
+plot(Predictors2)
+
+
+Predictors2 <-as.data.frame(Predictors2)
+
+colnames(Predictors2) <- c("Distance.to.water", "Distance.to.road","Existing.vegetation","Fire.Interval","Altitude", "Burn.intensity.soil","Burn.intensity.Canopy", "Burn.intensity.basal", "Fire.edge")
+
+summary(Predictors2)
+
+stargazer(Predictors2, type = "text", out = "common.txt")
+stargazer(Predictors2, type = "html")
+```

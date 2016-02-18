@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<GroundOverlay>
+<name>layer</name>
+<Icon><href>priority_area.png</href><viewBoundScale>0.75</viewBoundScale></Icon>
+	<LatLonBox>
+		<north>40.31976965</north><south>39.36708274</south><east>-120.04068068424</east><west>-121.69454516</west>
+	</LatLonBox>
+</GroundOverlay></kml>
